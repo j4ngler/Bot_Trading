@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# Environment variables
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+trading_logs.txt
+
+# Database
+*.db
+trading_history.db
+
+# Testnet - KHÔNG commit API keys!
+config_local.py
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
