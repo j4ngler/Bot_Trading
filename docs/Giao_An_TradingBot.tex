@@ -1,0 +1,186 @@
+% -*- coding: utf-8 -*-
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[vietnamese]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+
+\geometry{margin=2.3cm}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Giáo án Trading Bot}
+\fancyhead[R]{ChatGPT + Binance Testnet}
+\fancyfoot[C]{\thepage}
+
+\title{\textbf{Giáo Án Dự Án: Trading Bot}\\
+\large ChatGPT + Binance Testnet (dành cho học sinh cấp 3)}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section*{Thông tin chung}
+\begin{itemize}[leftmargin=1.2cm]
+  \item \textbf{Đối tượng:} Học sinh lớp 10--12, không yêu cầu nền tảng lập trình sâu.
+  \item \textbf{Thời lượng gợi ý:} 8 buổi $\times$ 90 phút (có thể rút gọn 6 buổi hoặc mở rộng 10 buổi).
+  \item \textbf{Mục tiêu tổng quát:}
+  \begin{itemize}
+    \item Hiểu luồng hoạt động trading bot: dữ liệu $\rightarrow$ chỉ báo $\rightarrow$ AI $\rightarrow$ rủi ro $\rightarrow$ thực thi $\rightarrow$ log $\rightarrow$ báo cáo.
+    \item Nắm cơ bản RSI, MA, ATR; quy tắc 1\%, Stop Loss/Take Profit, tỷ lệ R/R.
+    \item Vận hành bot trên Binance Testnet an toàn, đọc và giải thích báo cáo.
+    \item Tối thiểu hóa cảm xúc (FOMO, Loss Aversion) trong quyết định.
+  \end{itemize}
+\end{itemize}
+
+\section*{Chuẩn đầu ra}
+Sau khoá học, học sinh có thể:
+\begin{itemize}[leftmargin=1.2cm]
+  \item Trình bày được vai trò từng thành phần trong hệ thống.
+  \item Giải thích ý nghĩa RSI/MA/ATR và cách bot sử dụng các chỉ báo.
+  \item Tính được khối lượng vị thế dựa trên quy tắc 1\% và SL/TP.
+  \item Vận hành bot, quan sát chu kỳ 15 phút, mở báo cáo và diễn giải số liệu.
+  \item Trình bày ngắn gọn dự án (demo + báo cáo).
+\end{itemize}
+
+\section{Kế hoạch 8 buổi}
+
+\subsection*{Buổi 1 (90’): Khởi động \& môi trường}
+\textbf{Mục tiêu:} Hiểu dự án, luồng xử lý, thiết lập môi trường.\\
+\textbf{Nội dung:}
+\begin{itemize}
+  \item Giới thiệu hệ thống, Testnet và an toàn khi học.
+  \item Cài Python/venv, cài thư viện; tạo \texttt{.env} và nhập API keys.
+  \item Chạy chương trình, mở GUI, làm quen nút điều khiển.
+\end{itemize}
+\textbf{Đánh giá nhanh:} Nêu được 8 bước luồng hoạt động.
+
+\subsection*{Buổi 2 (90’): Chỉ báo kỹ thuật cơ bản}
+\textbf{Mục tiêu:} Hiểu RSI, MA, ATR và cách dùng.\\
+\textbf{Nội dung:}
+\begin{itemize}
+  \item RSI (0--100), vùng quá mua/qua bán; MA (xu hướng); ATR (biến động).
+  \item Bot chặn vùng cực trị, dùng ATR để đặt SL/TP linh hoạt.
+\end{itemize}
+\textbf{Thực hành:} Quan sát chỉ số hiển thị trong GUI; giải thích một chu kỳ mẫu.\\
+\textbf{Bài tập:} Câu hỏi trắc nghiệm ngắn về 3 chỉ báo.
+
+\subsection*{Buổi 3 (90’): AI Advisor \& Prompt}
+\textbf{Mục tiêu:} Hiểu cách AI phân tích và trả khuyến nghị.\\
+\textbf{Nội dung:}
+\begin{itemize}
+  \item Prompt mạch lạc; độ tin cậy; chi phí token; trường hợp lỗi $\Rightarrow$ giữ an toàn.
+  \item Đọc ``Khuyến nghị'' và ``Lý do'', đối chiếu RSI/MA/ATR.
+\end{itemize}
+\textbf{Bài tập:} Viết 1--2 biến thể prompt hướng tới giải thích dễ hiểu.
+
+\subsection*{Buổi 4 (90’): Quản lý rủi ro \& vị thế}
+\textbf{Mục tiêu:} Vận dụng quy tắc 1\%, SL/TP, R/R.\\
+\textbf{Nội dung:}
+\begin{itemize}
+  \item Công thức khối lượng: \(\text{Size} = \frac{\text{Vốn} \times \text{Risk\%}}{\text{Giá} \times \text{SL\%}}\).
+  \item SL $\approx 2\times$ ATR, TP $\approx 3\times$ ATR; yêu cầu R/R $\ge 1.5$.
+  \item Ràng buộc sàn: LOT\_SIZE, minNotional (ý tưởng, không cần chi tiết kỹ thuật).
+\end{itemize}
+\textbf{Bài tập:} Tính R/R từ ví dụ; kết luận có nên vào lệnh không.
+
+\subsection*{Buổi 5 (90’): Vận hành liên tục \& báo cáo}
+\textbf{Mục tiêu:} Theo dõi nhiều chu kỳ, đọc báo cáo.\\
+\textbf{Nội dung:}
+\begin{itemize}
+  \item Chu kỳ 15 phút; nút mở báo cáo; \texttt{trading\_report.html}, \texttt{equity\_curve.png}.
+  \item Đọc PnL, Win Rate, Profit Factor (giải thích trực quan).
+\end{itemize}
+\textbf{Thực hành:} Chạy 2--3 chu kỳ; mở và refresh báo cáo.\\
+\textbf{Bài tập:} Viết tóm tắt 5--7 câu về kết quả chu kỳ.
+
+\subsection*{Buổi 6 (90’): Kinh tế học hành vi}
+\textbf{Mục tiêu:} Nhận diện FOMO, Loss Aversion, Herding, Anchoring.\\
+\textbf{Nội dung:}
+\begin{itemize}
+  \item Tình huống thường gặp; kỷ luật máy móc giúp gì.
+  \item Cách bot chặn giao dịch khi tín hiệu quá cực hoặc biến động cao.
+\end{itemize}
+\textbf{Bài tập:} Viết checklist cá nhân ``5 điều không làm khi trade''.
+
+\subsection*{Buổi 7 (90’): Đồ án nhóm nhỏ}
+\textbf{Mục tiêu:} Tinh chỉnh nhẹ \& chuẩn bị demo.\\
+\textbf{Nội dung:}
+\begin{itemize}
+  \item Chọn symbol khác (ví dụ ETHUSDT); đổi tham số MA/RSI.
+  \item Tối ưu cách diễn đạt khuyến nghị cho dễ hiểu; thêm ghi chú vào báo cáo.
+\end{itemize}
+\textbf{Thực hành:} Mỗi nhóm chạy 3--4 chu kỳ, chụp báo cáo, chuẩn bị slide 5--7 trang.
+
+\subsection*{Buổi 8 (90’): Demo \& tổng kết}
+\textbf{Mục tiêu:} Thuyết trình, phản biện, rút kinh nghiệm.\\
+\textbf{Nội dung:}
+\begin{itemize}
+  \item Demo: mở GUI $\rightarrow$ chạy 1 chu kỳ $\rightarrow$ mở báo cáo $\rightarrow$ diễn giải.
+  \item Q\&A: vì sao bỏ lệnh; ATR cao xử lý thế nào; đọc R/R.
+\end{itemize}
+\textbf{Chấm điểm gợi ý:} Vận hành (20\%), giải thích chỉ báo \& logic (30\%), báo cáo (30\%), trình bày (20\%).
+
+\section{Nguồn lực \& chuẩn bị}
+\begin{itemize}[leftmargin=1.2cm]
+  \item Máy tính có Internet, Python 3.10+, \texttt{requirements.txt}.
+  \item Tài khoản OpenAI (ngân sách nhỏ), Binance Testnet keys.
+  \item Tài liệu: \texttt{README.md}, \texttt{HUONG\_DAN\_HOC\_SINH.md}, \texttt{Trading\_Bot\_Ly\_Thuyet.tex}.
+\end{itemize}
+
+\section{Đánh giá}
+\subsection*{Formative (trong quá trình)}
+\begin{itemize}
+  \item Câu hỏi nhanh cuối buổi (5 phút).
+  \item Bài tập: tính R/R, tóm tắt chu kỳ, sửa prompt, giải thích vì sao ``KHÔNG vào lệnh''.
+\end{itemize}
+\subsection*{Summative (cuối khoá)}
+\begin{itemize}
+  \item Báo cáo nhóm (HTML + slide), demo vận hành.
+  \item Tiêu chí: đúng quy trình, an toàn Testnet, giải thích được kết quả, kỹ năng trình bày.
+\end{itemize}
+
+\section{An toàn \& đạo đức}
+\begin{itemize}
+  \item Chỉ sử dụng \textbf{Binance Testnet}, tuyệt đối không dùng tiền thật.
+  \item Giữ bí mật API keys trong \texttt{.env}, không đưa lên kho công khai.
+  \item Đây là bài học thực hành, \textbf{không} phải lời khuyên đầu tư.
+\end{itemize}
+
+\section{Hoạt động mở rộng (tuỳ chọn)}
+\begin{itemize}
+  \item Thêm chỉ báo: MACD, Bollinger Bands.
+  \item Gửi thông báo Telegram khi có lệnh/khuyến nghị.
+  \item So sánh hiệu quả theo symbol/khung thời gian.
+\end{itemize}
+
+\section*{Phụ lục A: Thuật ngữ nhanh}
+\begin{longtable}{p{3.5cm}p{11cm}}
+\toprule
+\textbf{Thuật ngữ} & \textbf{Giải thích} \\
+\midrule
+RSI & Relative Strength Index, đo trạng thái quá mua/quá bán. \\
+MA & Moving Average, phản ánh xu hướng giá. \\
+ATR & Average True Range, đo mức độ biến động. \\
+SL/TP & Stop Loss / Take Profit, cắt lỗ / chốt lời tự động. \\
+R/R & Risk/Reward ratio, tỷ lệ rủi ro/lợi nhuận. \\
+FOMO & Fear Of Missing Out, sợ bỏ lỡ. \\
+Testnet & Mạng thử nghiệm, an toàn (không dùng tiền thật). \\
+\bottomrule
+\end{longtable}
+
+\vspace{0.5cm}
+\begin{center}
+\textbf{Chúc các bạn học tập hiệu quả và an toàn!}
+\end{center}
+
+\end{document}
+

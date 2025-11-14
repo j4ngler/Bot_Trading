@@ -4,10 +4,11 @@ CHỈ DÙNG BINANCE TESTNET - AN TOÀN cho học sinh!
 """
 
 from binance.client import Client
-import config
+from . import config
 import sqlite3
 from datetime import datetime
 import time
+from math import floor
 
 
 class TradeExecutor:
@@ -32,6 +33,56 @@ class TradeExecutor:
         except Exception as e:
             print(f"❌ Lỗi khởi tạo: {e}")
     
+    # ==== SYMBOL FILTER HELPERS ====
+    def _get_symbol_filters(self, symbol):
+        """Lấy filter của symbol (LOT_SIZE, MIN_NOTIONAL, PRICE_FILTER)."""
+        info = self.client.get_symbol_info(symbol)
+        if not info or 'filters' not in info:
+            return {}
+        filters = {f['filterType']: f for f in info['filters']}
+        return filters
+
+    def _round_step(self, value, step):
+        """Làm tròn value xuống theo bước step (tránh vượt filter)."""
+        step = float(step)
+        if step <= 0:
+            return value
+        precision = int(max(0, -round(__import__('math').log10(step)))) if step < 1 else 0
+        # dùng floor để không vượt quá
+        return float(f"{floor(value / step) * step:.{precision}f}")
+
+    def _adjust_quantity_for_filters(self, symbol, quantity, price):
+        """Điều chỉnh quantity theo LOT_SIZE và kiểm tra MIN_NOTIONAL.
+
+        Returns:
+            tuple (qty_ok: float, reason: str|None)
+        """
+        try:
+            f = self._get_symbol_filters(symbol)
+            lot = f.get('LOT_SIZE', {})
+            min_notional = f.get('MIN_NOTIONAL', {})
+
+            step_size = lot.get('stepSize', '0.00000001')
+            min_qty = float(lot.get('minQty', '0.0')) if lot else 0.0
+            max_qty = float(lot.get('maxQty', '1e30')) if lot else 1e30
+
+            # Làm tròn theo stepSize và giới hạn trong [minQty, maxQty]
+            adj_qty = self._round_step(float(quantity), step_size)
+            if adj_qty < min_qty:
+                return 0.0, f"Khối lượng sau điều chỉnh ({adj_qty}) < minQty ({min_qty})"
+            if adj_qty > max_qty:
+                adj_qty = max_qty
+
+            # Kiểm tra minNotional (giá trị lệnh tối thiểu)
+            notional = adj_qty * float(price)
+            min_notional_val = float(min_notional.get('minNotional', '0')) if min_notional else 0.0
+            if notional < min_notional_val:
+                return 0.0, f"Giá trị lệnh ({notional:.2f}) < minNotional ({min_notional_val})"
+
+            return adj_qty, None
+        except Exception as e:
+            return 0.0, f"Lỗi điều chỉnh LOT_SIZE: {e}"
+
     def get_account_balance(self):
         """
         Kiểm tra số dư tài khoản (Testnet)
@@ -95,13 +146,22 @@ class TradeExecutor:
             dict: Thông tin lệnh đã đặt
         """
         try:
-            print(f"📈 Đang mua {quantity} {symbol}...")
-            
+            # Lấy giá hiện tại (dùng ticker price) để kiểm tra minNotional
+            ticker = self.client.get_symbol_ticker(symbol=symbol)
+            last_price = float(ticker['price']) if ticker and 'price' in ticker else 0.0
+
+            adj_qty, reason = self._adjust_quantity_for_filters(symbol, quantity, last_price)
+            if adj_qty <= 0:
+                print(f"⏸️ Bỏ qua lệnh MUA: {reason}")
+                return None
+
+            print(f"📈 Đang mua {adj_qty} {symbol}...")
+
             order = self.client.create_order(
                 symbol=symbol,
                 side=Client.SIDE_BUY,
                 type=Client.ORDER_TYPE_MARKET,
-                quantity=quantity
+                quantity=adj_qty
             )
             
             print(f"✅ Lệnh MUA thành công!")
@@ -128,13 +188,21 @@ class TradeExecutor:
             dict: Thông tin lệnh đã đặt
         """
         try:
-            print(f"📉 Đang bán {quantity} {symbol}...")
-            
+            ticker = self.client.get_symbol_ticker(symbol=symbol)
+            last_price = float(ticker['price']) if ticker and 'price' in ticker else 0.0
+
+            adj_qty, reason = self._adjust_quantity_for_filters(symbol, quantity, last_price)
+            if adj_qty <= 0:
+                print(f"⏸️ Bỏ qua lệnh BÁN: {reason}")
+                return None
+
+            print(f"📉 Đang bán {adj_qty} {symbol}...")
+
             order = self.client.create_order(
                 symbol=symbol,
                 side=Client.SIDE_SELL,
                 type=Client.ORDER_TYPE_MARKET,
-                quantity=quantity
+                quantity=adj_qty
             )
             
             print(f"✅ Lệnh BÁN thành công!")

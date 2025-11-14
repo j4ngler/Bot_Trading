@@ -10,7 +10,7 @@ import sqlite3
 import json
 from datetime import datetime
 import os
-import config
+from . import config
 
 
 class DatabaseLogger:
@@ -24,14 +24,16 @@ class DatabaseLogger:
     4. Tạo báo cáo và phản hồi cho AI
     """
     
-    def __init__(self, db_file='trading_history.db'):
+    def __init__(self, db_file=None):
         """
         Khởi tạo Database Logger
         
         Args:
-            db_file: Đường dẫn file database
+            db_file: Đường dẫn file database (mặc định từ config)
         """
-        self.db_file = db_file
+        self.db_file = db_file or config.DATABASE_FILE
+        # Đảm bảo thư mục data tồn tại
+        os.makedirs(os.path.dirname(self.db_file), exist_ok=True)
         self._init_database()
         print("✅ Database & Logger đã sẵn sàng")
     
@@ -159,7 +161,24 @@ class DatabaseLogger:
             symbol = order_info.get('symbol', '')
             side = 'BUY' if order_info.get('side') == 'BUY' else 'SELL'
             quantity = float(order_info.get('executedQty', 0))
-            price = float(order_info.get('price', 0))
+            
+            # Tính giá entry: ưu tiên từ position_info, sau đó từ order response
+            if position_info and position_info.get('entry_price'):
+                price = float(position_info['entry_price'])
+            elif order_info.get('cummulativeQuoteQty') and quantity > 0:
+                # Market order: tính giá từ cummulativeQuoteQty / executedQty
+                price = float(order_info.get('cummulativeQuoteQty', 0)) / quantity
+            elif order_info.get('price'):
+                price = float(order_info.get('price', 0))
+            else:
+                # Fallback: lấy giá hiện tại từ ticker
+                try:
+                    from .trade_executor import TradeExecutor
+                    temp_executor = TradeExecutor()
+                    ticker = temp_executor.client.get_symbol_ticker(symbol=symbol)
+                    price = float(ticker['price']) if ticker else 0.0
+                except:
+                    price = 0.0
             
             # Lấy thông tin từ position_info nếu có
             stop_loss = position_info.get('stop_loss', 0) if position_info else 0

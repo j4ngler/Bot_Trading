@@ -1,0 +1,722 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[vietnamese]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+
+% Cấu hình trang
+\geometry{margin=2.5cm}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\leftmark}
+\fancyhead[R]{Trading Bot - Lý Thuyết}
+\fancyfoot[C]{\thepage}
+
+% Màu sắc
+\definecolor{primary}{RGB}{0,102,204}
+\definecolor{secondary}{RGB}{51,153,51}
+\definecolor{warning}{RGB}{255,153,0}
+
+% Tiêu đề
+\title{\textbf{Trading Bot - Trợ Lý Ảo Giao Dịch Tự Động}\\
+\large Hệ thống giao dịch tự động sử dụng ChatGPT AI + Binance Testnet\\
+\small Phù hợp cho học sinh cấp 3 - Học về AI, API, và Trading}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Tổng Quan}
+
+\subsection{Mục Tiêu Dự Án}
+
+Xây dựng một \textbf{trading bot tự động} có khả năng:
+
+\begin{itemize}
+    \item Thu thập dữ liệu thị trường từ Binance Testnet (an toàn)
+    \item Tính toán chỉ báo kỹ thuật (MA, RSI, ATR)
+    \item Sử dụng ChatGPT AI để phân tích và đưa ra khuyến nghị
+    \item Tự động thực thi lệnh (Mua/Bán) dựa trên AI
+    \item Logging và báo cáo hiệu suất giao dịch
+\end{itemize}
+
+\subsection{Luồng Hoạt Động}
+
+Hệ thống hoạt động theo các bước sau:
+
+\begin{enumerate}
+    \item \textbf{Thu thập dữ liệu} $\rightarrow$ Lấy giá BTC/USDT từ Binance
+    \item \textbf{Tính chỉ số} $\rightarrow$ MA, RSI, ATR
+    \item \textbf{AI phân tích} $\rightarrow$ ChatGPT đưa ra khuyến nghị BUY/SELL/HOLD
+    \item \textbf{Kiểm tra rủi ro} $\rightarrow$ Risk Manager xác định có an toàn giao dịch
+    \item \textbf{Tính vị thế} $\rightarrow$ Tính khối lượng, stop loss, take profit
+    \item \textbf{Thực thi} $\rightarrow$ Gửi lệnh (nếu hợp lý)
+    \item \textbf{Log} $\rightarrow$ Lưu vào database
+    \item \textbf{Báo cáo} $\rightarrow$ Tổng hợp hiệu suất và vẽ biểu đồ
+\end{enumerate}
+
+\section{Thuật Ngữ, Viết Tắt Và Ký Hiệu}
+
+Tài liệu sử dụng nhiều thuật ngữ chuyên môn. Bảng dưới đây giúp người đọc nắm bắt nhanh:
+
+\begin{description}[leftmargin=3cm,labelsep=0.6cm]
+    \item[AI] Trí tuệ nhân tạo (Artificial Intelligence) -- công nghệ cho phép hệ thống học từ dữ liệu và đưa ra quyết định tự động.
+    \item[API] Giao diện lập trình ứng dụng (Application Programming Interface) -- bộ quy tắc cho phép các hệ thống phần mềm giao tiếp và trao đổi dữ liệu.
+    \item[ATR] Average True Range -- chỉ báo đo biên độ dao động trung bình của giá trong một giai đoạn nhất định.
+    \item[ATR/giá] Tỷ lệ giữa ATR và giá hiện tại; dùng để đánh giá mức độ biến động so với giá trị đang giao dịch.
+    \item[BTC/USDT] Cặp giao dịch giữa Bitcoin (BTC) và Tether (USDT) -- USDT là stablecoin neo theo đô la Mỹ.
+    \item[BUY/SELL/HOLD] Ba trạng thái hành động của bot: mua vào, bán ra hoặc giữ nguyên vị thế hiện tại.
+    \item[ChatGPT] Mô hình ngôn ngữ của OpenAI được sử dụng để phân tích dữ liệu và đưa ra khuyến nghị.
+    \item[EMA] Exponential Moving Average -- đường trung bình động hàm mũ, nhấn mạnh dữ liệu giá gần nhất.
+    \item[EMH] Efficient Market Hypothesis -- giả thuyết thị trường hiệu quả; giá phản ánh đầy đủ thông tin quá khứ.
+    \item[FOMO] Fear Of Missing Out -- tâm lý sợ bỏ lỡ cơ hội, dễ dẫn đến mua đuổi ở đỉnh.
+    \item[GUI] Graphical User Interface -- giao diện đồ họa với nút bấm, ô nhập, biểu đồ.
+    \item[HOLD] Giữ nguyên vị thế, không mở thêm lệnh mới.
+    \item[Log] Nhật ký lưu lại sự kiện và kết quả để phục vụ truy vết và đánh giá hiệu suất.
+    \item[MA] Moving Average -- đường trung bình động phản ánh xu hướng giá.
+    \item[Position Sizing] Quy trình tính khối lượng lệnh phù hợp với mức rủi ro cho phép.
+    \item[R/R] Risk/Reward Ratio -- tỷ lệ giữa lợi nhuận kỳ vọng và rủi ro chấp nhận.
+    \item[Risk\%] Phần trăm vốn tối đa chấp nhận rủi ro trên mỗi lệnh.
+    \item[RSI] Relative Strength Index -- chỉ báo đo sức mạnh tương đối của xu hướng giá.
+    \item[SL] Stop Loss -- mức giá cắt lỗ tự động để giới hạn thua lỗ.
+    \item[TP] Take Profit -- mức giá chốt lời tự động để khóa lợi nhuận.
+    \item[StopLoss\% / TakeProfit\%] Mức phần trăm cố định dùng để đặt SL/TP khi không có dữ liệu ATR.
+    \item[Loss Aversion] Thiên kiến ghét thua lỗ -- khuynh hướng giữ lệnh lỗ quá lâu vì kỳ vọng hồi phục.
+    \item[$\rightarrow$] Ký hiệu mũi tên thể hiện luồng xử lý hoặc quan hệ nguyên nhân--kết quả giữa các bước.
+\end{description}
+
+\section{Khái Niệm Chỉ Báo Kỹ Thuật}
+
+\subsection{RSI (Relative Strength Index) - Chỉ Số Sức Mạnh Tương Đối}
+
+\subsubsection{Định nghĩa}
+
+RSI là chỉ báo đo tốc độ và quy mô biến động giá gần đây. Giá trị từ 0 đến 100, được phát triển bởi J. Welles Wilder (1978).
+
+\subsubsection{Công thức}
+
+\begin{equation}
+\text{RSI} = 100 - \frac{100}{1 + \text{RS}}
+\end{equation}
+
+Trong đó: $\text{RS} = \frac{\text{Trung bình tăng}}{\text{Trung bình giảm}}$ (trong 14 phiên)
+
+\subsubsection{Ý nghĩa}
+
+\begin{itemize}
+    \item \textbf{RSI > 70}: Thị trường \textbf{QUÁ MUA} (Overbought)
+    \begin{itemize}
+        \item Nhiều người đã mua $\rightarrow$ Cầu giảm $\rightarrow$ Giá có thể điều chỉnh xuống
+        \item Bot không mua khi RSI > 70
+    \end{itemize}
+    
+    \item \textbf{RSI < 30}: Thị trường \textbf{QUÁ BÁN} (Oversold)
+    \begin{itemize}
+        \item Nhiều người đã bán $\rightarrow$ Cung giảm $\rightarrow$ Giá có thể phục hồi
+        \item Bot cân nhắc mua khi RSI < 30
+    \end{itemize}
+    
+    \item \textbf{RSI 30-70}: Thị trường \textbf{CÂN BẰNG}
+    \begin{itemize}
+        \item Không có tín hiệu rõ ràng $\rightarrow$ Bot thường HOLD
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Ví dụ thực tế}
+
+Giá BTC: \$43,250\\
+RSI: 72.5\\
+$\rightarrow$ RSI > 70 $\rightarrow$ QUÁ MUA\\
+$\rightarrow$ Bot khuyến nghị: SELL hoặc HOLD\\
+$\rightarrow$ Không nên mua vào lúc này
+
+\subsection{MA (Moving Average) - Đường Trung Bình Động}
+
+\subsubsection{Định nghĩa}
+
+MA là giá trung bình của một tài sản trong N phiên gần nhất. Làm mịn biến động giá, giúp nhận diện xu hướng.
+
+\subsubsection{Các loại MA}
+
+\begin{itemize}
+    \item \textbf{SMA (Simple Moving Average)}: Trung bình số học đơn giản
+    \begin{equation}
+    \text{SMA}(20) = \frac{\text{Giá}_1 + \text{Giá}_2 + \cdots + \text{Giá}_{20}}{20}
+    \end{equation}
+    
+    \item \textbf{EMA (Exponential Moving Average)}: Trung bình hàm mũ
+    \begin{itemize}
+        \item Ưu tiên dữ liệu gần đây hơn
+        \item Phản ứng nhanh hơn với biến động mới
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Ý nghĩa}
+
+\begin{itemize}
+    \item \textbf{Giá > MA}: Xu hướng \textbf{TĂNG} (Bullish)
+    \begin{itemize}
+        \item Giá đang ở trên mức trung bình $\rightarrow$ Lực mua mạnh
+        \item Bot có thể cân nhắc BUY
+    \end{itemize}
+    
+    \item \textbf{Giá < MA}: Xu hướng \textbf{GIẢM} (Bearish)
+    \begin{itemize}
+        \item Giá đang ở dưới mức trung bình $\rightarrow$ Lực bán mạnh
+        \item Bot có thể cân nhắc SELL
+    \end{itemize}
+    
+    \item \textbf{MA ngắn cắt lên MA dài}: Tín hiệu \textbf{MUA} (Golden Cross)
+    \item \textbf{MA ngắn cắt xuống MA dài}: Tín hiệu \textbf{BÁN} (Death Cross)
+\end{itemize}
+
+\subsubsection{Ví dụ thực tế}
+
+Giá BTC: \$43,250\\
+MA(20): \$42,800\\
+$\rightarrow$ Giá > MA $\rightarrow$ Xu hướng TĂNG\\
+$\rightarrow$ Bot phân tích: Thị trường đang tích cực
+
+\subsection{ATR (Average True Range) - Biên Độ Dao Động Trung Bình}
+
+\subsubsection{Định nghĩa}
+
+ATR đo lường \textbf{mức độ biến động} (volatility) của giá. Được phát triển bởi J. Welles Wilder (1978). Giá trị càng cao $\rightarrow$ Thị trường càng biến động.
+
+\subsubsection{Công thức}
+
+True Range (TR) = Max của:
+\begin{itemize}
+    \item High - Low (biên độ trong phiên)
+    \item $|\text{High} - \text{Close trước}|$ (gap tăng)
+    \item $|\text{Low} - \text{Close trước}|$ (gap giảm)
+\end{itemize}
+
+\begin{equation}
+\text{ATR} = \text{Trung bình của TR trong 14 phiên}
+\end{equation}
+
+\subsubsection{Ý nghĩa}
+
+\begin{itemize}
+    \item \textbf{ATR cao}: Thị trường \textbf{biến động mạnh}
+    \begin{itemize}
+        \item Giá nhảy mạnh $\rightarrow$ Cần đặt Stop Loss xa hơn
+        \item Rủi ro cao $\rightarrow$ Bot cẩn thận hơn
+    \end{itemize}
+    
+    \item \textbf{ATR thấp}: Thị trường \textbf{ổn định}
+    \begin{itemize}
+        \item Giá ít biến động $\rightarrow$ Có thể đặt Stop Loss gần hơn
+        \item Rủi ro thấp $\rightarrow$ Bot có thể giao dịch an toàn hơn
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Ứng dụng trong bot}
+
+Đặt Stop Loss động:
+
+\begin{itemize}
+    \item Nếu có ATR:
+    \begin{itemize}
+        \item Stop Loss = Entry Price - (2 $\times$ ATR) [cho lệnh BUY]
+        \item Take Profit = Entry Price + (3 $\times$ ATR)
+    \end{itemize}
+    
+    \item Nếu không có ATR:
+    \begin{itemize}
+        \item Stop Loss = Entry Price $\times$ (1 - 2\%) [cố định 2\%]
+        \item Take Profit = Entry Price $\times$ (1 + 3\%) [cố định 3\%]
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Ví dụ thực tế}
+
+Giá BTC: \$43,250\\
+ATR: \$250\\
+$\rightarrow$ ATR = \$250 $\rightarrow$ Biến động trung bình
+
+\textbf{Stop Loss (dùng ATR):}
+\begin{align}
+&= \$43,250 - (2 \times \$250)\\
+&= \$42,750 \quad \text{[Cách entry 1.16\%]}
+\end{align}
+
+\textbf{Stop Loss (cố định 2\%):}
+\begin{align}
+&= \$43,250 \times 0.98\\
+&= \$42,385 \quad \text{[Cách entry 2\%]}
+\end{align}
+
+$\rightarrow$ Dùng ATR linh hoạt hơn, phù hợp với biến động thực tế
+
+\subsection{Tổng Hợp: Cách Bot Sử Dụng 3 Chỉ Báo}
+
+\begin{longtable}{p{3cm}p{4cm}p{6cm}}
+\toprule
+\textbf{Chỉ Báo} & \textbf{Mục Đích} & \textbf{Bot Sử Dụng} \\
+\midrule
+\textbf{RSI} & Phát hiện quá mua/quá bán & Chặn giao dịch khi RSI > 70 hoặc < 30 \\
+\midrule
+\textbf{MA} & Xác định xu hướng & So sánh giá với MA để quyết định BUY/SELL \\
+\midrule
+\textbf{ATR} & Đo biến động & Điều chỉnh Stop Loss/Take Profit linh hoạt \\
+\bottomrule
+\end{longtable}
+
+\subsubsection{Ví dụ kết hợp}
+
+\begin{itemize}
+    \item Giá: \$43,250
+    \item MA(20): \$42,800 $\rightarrow$ Giá > MA (xu hướng tăng)
+    \item RSI: 65 $\rightarrow$ Cân bằng (30-70)
+    \item ATR: \$250 $\rightarrow$ Biến động bình thường
+\end{itemize}
+
+$\rightarrow$ Bot phân tích:
+\begin{itemize}
+    \item Xu hướng tăng (giá > MA)
+    \item RSI an toàn (không quá cực)
+    \item ATR ổn định
+\end{itemize}
+
+$\rightarrow$ ChatGPT có thể khuyến nghị: BUY\\
+$\rightarrow$ Risk Manager kiểm tra: Pass\\
+$\rightarrow$ Bot thực thi lệnh với Stop Loss = 2$\times$ATR
+
+\section{Lý Thuyết Kinh Tế – Tài Chính Nền Tảng}
+
+\subsection{Kinh tế học vi mô: Cung – Cầu và Kỳ vọng}
+
+\begin{itemize}
+    \item \textbf{Cung – Cầu}: Giá tăng khi cầu > cung; giảm khi cung > cầu. Trong crypto, kỳ vọng tương lai làm cầu thay đổi rất nhanh.
+    
+    \item \textbf{Ứng dụng trong bot}:
+    \begin{itemize}
+        \item RSI > 70 hiểu như trạng thái ``đã có quá nhiều người mua'' $\rightarrow$ cầu suy yếu $\rightarrow$ rủi ro đảo chiều tăng.
+        \item RSI < 30 hiểu như ``đã có quá nhiều người bán'' $\rightarrow$ áp lực cung suy yếu $\rightarrow$ dễ phục hồi.
+    \end{itemize}
+    
+    \item \textbf{Kỳ vọng \& EMH (Efficient Market Hypothesis)}: Bot phản ứng theo dữ liệu gần nhất (RSI/MA/ATR) tương ứng giả định thị trường hiệu quả mức ``yếu'' (giá phản ánh dữ liệu quá khứ), nên vẫn còn chỗ cho chiến lược phản ứng nhanh.
+\end{itemize}
+
+\subsection{Kinh tế học hành vi: Vì sao cần kỷ luật máy móc}
+
+\textbf{Tại sao con người thường thua lỗ trong trading?} Nghiên cứu cho thấy 90\% trader thua lỗ không phải vì thiếu kiến thức, mà vì \textbf{cảm xúc chi phối quyết định}. Bot tự động loại bỏ yếu tố này.
+
+\subsubsection{Loss Aversion (Ghét thua lỗ - Thiên kiến mất mát)}
+
+\textbf{Định nghĩa:} Con người cảm nhận nỗi đau mất \$100 mạnh gấp 2-2.5 lần niềm vui khi kiếm được \$100. Điều này khiến trader:
+\begin{itemize}
+    \item Giữ lệnh lỗ quá lâu, hy vọng giá quay lại
+    \item Cắt lời quá sớm vì sợ mất lợi nhuận đã có
+    \item Không dám vào lệnh mới sau khi thua
+\end{itemize}
+
+\textbf{Ví dụ thực tế:}
+\begin{itemize}
+    \item Trader mua BTC ở \$40,000
+    \item Giá giảm xuống \$38,000 (lỗ \$2,000)
+    \item ``Chờ giá quay lại, không bán lỗ!''
+    \item Giá tiếp tục giảm xuống \$35,000 (lỗ \$5,000)
+    \item Vẫn không bán vì ``đã lỗ rồi, chờ thêm''
+    \item Cuối cùng giá xuống \$30,000 $\rightarrow$ Mất \$10,000
+\end{itemize}
+
+\textbf{Bot xử lý như thế nào:}
+\begin{itemize}
+    \item Bot đặt \textbf{Stop Loss cứng} ngay khi vào lệnh (không có cảm xúc)
+    \item Nếu có ATR: SL = Entry - (2 $\times$ ATR)
+    \item Nếu không: SL = Entry $\times$ (1 - 2\%)
+    \item Khi giá chạm Stop Loss $\rightarrow$ Bot tự động bán, không do dự
+    \item \textbf{Kết quả:} Chỉ mất tối đa 1\% vốn/lệnh, không bao giờ ``thổi bay'' tài khoản
+\end{itemize}
+
+\subsubsection{FOMO (Fear Of Missing Out - Sợ bỏ lỡ)}
+
+\textbf{Định nghĩa:} Khi thấy giá tăng mạnh, trader sợ bỏ lỡ cơ hội $\rightarrow$ mua đuổi ở đỉnh, thường là lúc giá sắp đảo chiều.
+
+\textbf{Ví dụ thực tế:}
+\begin{itemize}
+    \item BTC đang ở \$40,000
+    \item Giá tăng lên \$42,000 (tin tức tốt)
+    \item Trader: ``Mình đã bỏ lỡ! Phải mua ngay!''
+    \item Mua ở \$42,000
+    \item Giá đảo chiều, giảm xuống \$38,000
+    \item Lỗ \$4,000 ngay lập tức
+\end{itemize}
+
+\textbf{Bot xử lý như thế nào:}
+\begin{itemize}
+    \item Bot kiểm tra điều kiện:
+    \begin{itemize}
+        \item Chặn giao dịch nếu RSI > 75 (quá mua)
+        \item Chặn nếu biến động quá cao: ATR/giá > 5\%
+    \end{itemize}
+    \item Khi RSI > 70 hoặc ATR/giá > 5\% $\rightarrow$ Bot \textbf{tự động từ chối} giao dịch
+    \item \textbf{Kết quả:} Bot không bao giờ mua đuổi ở đỉnh, tránh được FOMO
+\end{itemize}
+
+\subsubsection{Herding (Bầy đàn - Tâm lý đám đông)}
+
+\textbf{Định nghĩa:} Con người có xu hướng làm theo đám đông. Khi nhiều người mua $\rightarrow$ giá tăng $\rightarrow$ nhiều người mua hơn $\rightarrow$ tạo bong bóng. Khi nhiều người bán $\rightarrow$ giá giảm $\rightarrow$ nhiều người bán hơn $\rightarrow$ tạo hoảng loạn.
+
+\textbf{Ví dụ thực tế:}
+\begin{itemize}
+    \item Thị trường đang ``hưng phấn'':
+    \begin{itemize}
+        \item RSI = 78 (quá mua)
+        \item Giá tăng 10\% trong 1 ngày
+        \item Mọi người đều mua $\rightarrow$ FOMO lan truyền
+    \end{itemize}
+    \item Đây là lúc nguy hiểm nhất, giá sắp đảo chiều
+\end{itemize}
+
+\textbf{Bot xử lý như thế nào:}
+\begin{itemize}
+    \item Bot nhận diện ``bầy đàn'' qua:
+    \begin{itemize}
+        \item RSI cực cao (>75) $\rightarrow$ Nhiều người đã mua
+        \item Biến động cao (ATR/giá > 5\%) $\rightarrow$ Thị trường không ổn định
+    \end{itemize}
+    \item Bot \textbf{không giao dịch} khi phát hiện tín hiệu này
+    \item \textbf{Kết quả:} Bot tránh được ``bẫy đám đông'', giao dịch ngược lại khi thị trường quá cực
+\end{itemize}
+
+\subsubsection{Anchoring (Neo giá mua - Thiên kiến neo)}
+
+\textbf{Định nghĩa:} Trader ``neo'' vào giá mua ban đầu, không chịu thay đổi quyết định dựa trên dữ liệu mới.
+
+\textbf{Ví dụ thực tế:}
+\begin{itemize}
+    \item Trader mua BTC ở \$40,000
+    \item Giá giảm xuống \$35,000
+    \item Trader: ``Mình mua ở \$40k, phải đợi giá về \$40k mới bán''
+    \item Bỏ qua tín hiệu bán từ chỉ báo kỹ thuật
+    \item Giá tiếp tục giảm $\rightarrow$ Lỗ lớn
+\end{itemize}
+
+\textbf{Bot xử lý như thế nào:}
+\begin{itemize}
+    \item Bot \textbf{không nhớ} giá mua cũ
+    \item Mỗi chu kỳ, bot phân tích lại từ đầu dựa trên:
+    \begin{itemize}
+        \item Giá hiện tại
+        \item Chỉ báo kỹ thuật mới nhất (MA, RSI, ATR)
+        \item Khuyến nghị ChatGPT mới nhất
+    \end{itemize}
+    \item Bot ra quyết định \textbf{hoàn toàn dựa trên dữ liệu hiện tại}, không bị ảnh hưởng bởi lịch sử
+    \item \textbf{Kết quả:} Bot linh hoạt, thích ứng nhanh với thị trường
+\end{itemize}
+
+\subsection{Lý thuyết danh mục \& rủi ro: Vì sao chỉ mạo hiểm 1\% vốn/lệnh}
+
+\subsubsection{Quy tắc 1\% - Bảo vệ tài khoản}
+
+\textbf{Tại sao 1\%?} Nếu bạn mạo hiểm quá nhiều mỗi lệnh, chỉ cần 10-20 lệnh lỗ liên tiếp là tài khoản sẽ ``thổi bay''.
+
+\begin{longtable}{c|c|c}
+\toprule
+\textbf{Rủi ro/lệnh} & \textbf{Số lệnh lỗ để mất 50\% vốn} & \textbf{Số lệnh lỗ để mất 100\% vốn} \\
+\midrule
+\textbf{1\%} (Bot dùng) & 69 lệnh & 100 lệnh \\
+\midrule
+5\% & 14 lệnh & 20 lệnh \\
+\midrule
+10\% & 7 lệnh & 10 lệnh \\
+\midrule
+20\% & 3 lệnh & 5 lệnh \\
+\bottomrule
+\end{longtable}
+
+\textbf{Kết luận:} Với 1\% rủi ro, bạn có thể chịu được \textbf{100 lệnh lỗ liên tiếp} trước khi mất hết vốn. Điều này gần như không thể xảy ra nếu bot hoạt động đúng.
+
+\subsubsection{Position Sizing (Tính khối lượng vị thế)}
+
+\textbf{Công thức:}
+\begin{equation}
+\text{Khối lượng} = \frac{\text{Vốn} \times \text{Risk\%}}{\text{Giá} \times \text{StopLoss\%}}
+\end{equation}
+
+\textbf{Ví dụ cụ thể:}
+\begin{itemize}
+    \item Vốn: \$10,000
+    \item Risk: 1\% = \$100
+    \item Giá BTC: \$43,250
+    \item Stop Loss: 2\% = \$865 (khoảng cách từ entry)
+\end{itemize}
+
+\begin{align}
+\text{Khối lượng} &= \frac{\$100}{\$865} = 0.1156 \text{ BTC}\\
+\text{Giá trị lệnh} &= 0.1156 \times \$43,250 = \$5,000
+\end{align}
+
+\textbf{Tại sao công thức này?}
+\begin{itemize}
+    \item Nếu giá giảm 2\% (chạm Stop Loss) $\rightarrow$ Bạn chỉ mất đúng \$100 (1\% vốn)
+    \item Không phụ thuộc vào giá BTC $\rightarrow$ Luôn rủi ro 1\% dù BTC ở \$30k hay \$60k
+\end{itemize}
+
+\subsubsection{Risk/Reward Ratio (Tỷ lệ Rủi ro/Lợi nhuận)}
+
+\textbf{Định nghĩa:} Tỷ lệ giữa lợi nhuận kỳ vọng và rủi ro tối đa.
+
+\textbf{Công thức:}
+\begin{equation}
+\text{R/R} = \frac{\text{Take Profit} - \text{Entry}}{\text{Entry} - \text{Stop Loss}}
+\end{equation}
+
+\textbf{Ví dụ:}
+\begin{itemize}
+    \item Entry: \$43,250
+    \item Stop Loss: \$42,385 (giảm 2\%)
+    \item Take Profit: \$44,548 (tăng 3\%)
+\end{itemize}
+
+\begin{align}
+\text{R/R} &= \frac{\$44,548 - \$43,250}{\$43,250 - \$42,385}\\
+&= \frac{\$1,298}{\$865} = 1.5
+\end{align}
+
+\textbf{Ý nghĩa:}
+\begin{itemize}
+    \item R/R = 1.5 $\rightarrow$ Nếu thắng, bạn kiếm \$1.5 cho mỗi \$1 rủi ro
+    \item Nếu tỷ lệ thắng 50\%, bạn vẫn có lời về lâu dài
+    \item \textbf{Quy tắc:} Chỉ vào lệnh nếu R/R $\geq$ 1.5
+\end{itemize}
+
+\subsubsection{Kelly Criterion (Tiêu chí Kelly - Nâng cao)}
+
+\textbf{Định nghĩa:} Công thức toán học tính tỷ lệ vốn tối ưu dựa trên xác suất thắng và R/R ratio.
+
+\textbf{Công thức:}
+\begin{equation}
+\text{Kelly \%} = \frac{\text{Win Rate} \times \text{R/R} - \text{Loss Rate}}{\text{R/R}}
+\end{equation}
+
+\textbf{Ví dụ:}
+\begin{itemize}
+    \item Win Rate: 60\% (thắng 6/10 lệnh)
+    \item Loss Rate: 40\% (thua 4/10 lệnh)
+    \item R/R: 1.5
+\end{itemize}
+
+\begin{align}
+\text{Kelly \%} &= \frac{0.6 \times 1.5 - 0.4}{1.5}\\
+&= \frac{0.9 - 0.4}{1.5}\\
+&= \frac{0.5}{1.5} = 33.3\%
+\end{align}
+
+\textbf{Lưu ý:} Kelly Criterion thường quá mạo hiểm. Bot dùng \textbf{``Half Kelly''} (50\% của Kelly) hoặc \textbf{1\% cố định} để an toàn hơn.
+
+\subsection{Volatility (ATR) và kịch bản dừng lỗ/chốt lời}
+
+\subsubsection{ATR (Average True Range) - Đo biến động}
+
+\textbf{Tại sao cần ATR?} Thị trường không phải lúc nào cũng biến động như nhau. Có ngày giá nhảy \$500, có ngày chỉ nhảy \$50. Stop Loss cố định 2\% không phù hợp với mọi tình huống.
+
+\begin{longtable}{p{3.5cm}|c|c|p{2cm}|p{3cm}|p{3cm}}
+\toprule
+\textbf{Tình huống} & \textbf{Giá BTC} & \textbf{ATR} & \textbf{Biến động} & \textbf{Stop Loss cố định 2\%} & \textbf{Stop Loss dùng ATR} \\
+\midrule
+Thị trường ổn định & \$43,250 & \$100 & Thấp & \$865 (2\%) & \$200 (2$\times$ATR = 0.46\%) \\
+\midrule
+Thị trường biến động & \$43,250 & \$500 & Cao & \$865 (2\%) & \$1,000 (2$\times$ATR = 2.3\%) \\
+\bottomrule
+\end{longtable}
+
+\textbf{Kết luận:}
+\begin{itemize}
+    \item Khi ATR thấp $\rightarrow$ Stop Loss gần hơn $\rightarrow$ Bảo vệ tốt hơn
+    \item Khi ATR cao $\rightarrow$ Stop Loss xa hơn $\rightarrow$ Tránh bị ``stop out'' bởi noise
+\end{itemize}
+
+\textbf{Ví dụ cụ thể:}
+\begin{itemize}
+    \item Entry: \$43,250
+    \item ATR: \$250
+\end{itemize}
+
+\begin{align}
+\text{Stop Loss (dùng ATR)} &= \$43,250 - (2 \times \$250) = \$42,750\\
+\text{Take Profit (dùng ATR)} &= \$43,250 + (3 \times \$250) = \$44,000
+\end{align}
+
+\begin{align}
+\text{R/R} &= \frac{\$44,000 - \$43,250}{\$43,250 - \$42,750}\\
+&= \frac{\$750}{\$500} = 1.5 \quad \checkmark \text{ (Hợp lý)}
+\end{align}
+
+\subsection{Chu kỳ thị trường và tâm lý số đông}
+
+\subsubsection{Chu kỳ tâm lý thị trường}
+
+Thị trường crypto trải qua các giai đoạn tâm lý lặp đi lặp lại:
+
+\begin{enumerate}
+    \item \textbf{Tích luỹ (Accumulation)}
+    \begin{itemize}
+        \item RSI thấp (20-30), giá ổn định
+        \item Ít người quan tâm
+        \item Bot: Có thể mua (cơ hội tốt)
+    \end{itemize}
+    
+    \item \textbf{Hoài nghi (Disbelief)}
+    \begin{itemize}
+        \item Giá bắt đầu tăng nhẹ
+        \item Nhiều người vẫn hoài nghi
+        \item Bot: Theo dõi, chờ tín hiệu rõ ràng
+    \end{itemize}
+    
+    \item \textbf{Lạc quan (Optimism)}
+    \begin{itemize}
+        \item Giá tăng mạnh
+        \item RSI tăng (50-70)
+        \item Bot: Có thể mua (xu hướng tăng)
+    \end{itemize}
+    
+    \item \textbf{Hưng phấn (Euphoria)} \textcolor{warning}{⚠️}
+    \begin{itemize}
+        \item RSI rất cao (>75)
+        \item Giá tăng mạnh, mọi người FOMO
+        \item Bot: KHÔNG GIAO DỊCH (quá nguy hiểm)
+    \end{itemize}
+    
+    \item \textbf{Hoảng loạn (Panic)}
+    \begin{itemize}
+        \item Giá giảm mạnh
+        \item RSI rất thấp (<25)
+        \item Bot: Cân nhắc mua (cơ hội hồi phục)
+    \end{itemize}
+    
+    \item \textbf{Trầm cảm (Depression)}
+    \begin{itemize}
+        \item Giá tiếp tục giảm
+        \item Nhiều người bán tháo
+        \item Bot: Chờ tín hiệu tích luỹ
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Bot nhận diện chu kỳ như thế nào:}
+\begin{itemize}
+    \item Nếu RSI > 75: ``RSI quá cao - Thị trường quá mua (Hưng phấn)'' $\rightarrow$ Không giao dịch
+    \item Nếu RSI < 25: ``RSI quá thấp - Thị trường quá bán (Hoảng loạn)'' $\rightarrow$ Không giao dịch
+\end{itemize}
+
+\textbf{Ví dụ thực tế:}
+\begin{itemize}
+    \item Tình huống: BTC tăng từ \$40k $\rightarrow$ \$50k trong 1 tuần
+    \item RSI: 78 (quá mua)
+    \item ATR: \$800 (biến động cao)
+    \item $\rightarrow$ Bot nhận diện: ``Hưng phấn'' - Giai đoạn nguy hiểm
+    \item $\rightarrow$ Bot: KHÔNG GIAO DỊCH
+    \item $\rightarrow$ Kết quả: Giá đảo chiều, giảm về \$42k
+    \item $\rightarrow$ Bot tránh được lỗ lớn
+\end{itemize}
+
+\subsection{Bảng quy chiếu nhanh: Lý thuyết $\rightarrow$ Thực thi trong bot}
+
+\begin{longtable}{p{3cm}|p{5cm}|p{4cm}}
+\toprule
+\textbf{Lý thuyết} & \textbf{Ứng dụng trong bot} & \textbf{Ví dụ} \\
+\midrule
+\textbf{Cung–Cầu} & Dùng RSI/MA để suy luận áp lực mua bán & RSI > 70 $\rightarrow$ Cầu yếu $\rightarrow$ Không mua \\
+\midrule
+\textbf{Loss Aversion} & Stop Loss cứng, tự động cắt lỗ & SL = Entry - 2$\times$ATR \\
+\midrule
+\textbf{FOMO} & Chặn giao dịch khi RSI > 75 hoặc ATR/giá > 5\% & RSI = 78 $\rightarrow$ Không giao dịch \\
+\midrule
+\textbf{Herding} & Nhận diện cực trị qua RSI + ATR & RSI cao + ATR cao $\rightarrow$ Bỏ qua \\
+\midrule
+\textbf{Anchoring} & Mỗi chu kỳ phân tích lại từ đầu & Không nhớ giá cũ \\
+\midrule
+\textbf{Quy tắc 1\%} & Risk 1\%/lệnh, tính khối lượng theo SL & \$10k vốn $\rightarrow$ \$100 rủi ro/lệnh \\
+\midrule
+\textbf{Position Sizing} & Công thức: $\frac{\text{Vốn} \times 1\%}{\text{Giá} \times \text{SL\%}}$ & Quantity = \$100 / \$865 \\
+\midrule
+\textbf{Risk/Reward} & Tính R/R ratio, chỉ vào lệnh nếu $\geq$ 1.5 & R/R = 1.5 $\rightarrow$ OK \\
+\midrule
+\textbf{Volatility (ATR)} & Điều chỉnh SL/TP linh hoạt theo ATR & SL = 2$\times$ATR, TP = 3$\times$ATR \\
+\midrule
+\textbf{Chu kỳ tâm lý} & Nhận diện vùng cực trị (RSI > 75 hoặc < 25) & RSI = 78 $\rightarrow$ ``Hưng phấn'' $\rightarrow$ Không giao dịch \\
+\bottomrule
+\end{longtable}
+
+\section{Cách Sử Dụng}
+
+\subsection{Các Chế Độ Hoạt Động}
+
+Sau khi khởi động hệ thống, bạn sẽ thấy menu chọn:
+
+\begin{itemize}
+    \item \textbf{Chế độ 0: Chạy với GIAO DIỆN GUI} - Giao diện đồ họa với các nút điều khiển
+    \item \textbf{Chế độ 1: Chạy MỘT LẦN} - Phân tích và dừng
+    \item \textbf{Chế độ 2: Chạy LIÊN TỤC} - Tự động mỗi 15 phút
+    \item \textbf{Chế độ 3: Chạy DEMO} - Chỉ phân tích, không giao dịch
+    \item \textbf{Chế độ 4: Xem BÁO CÁO} - Hiệu suất giao dịch (HTML + biểu đồ)
+\end{itemize}
+
+\subsection{Ví Dụ Output}
+
+\begin{itemize}
+    \item Giá: \$43,250
+    \item MA: \$42,800
+    \item RSI: 72.5
+    \item ATR: \$250
+    \item ChatGPT: SELL (RSI cao, quá mua)
+    \item KHÔNG thực thi - RSI quá cực, không an toàn
+\end{itemize}
+
+\section{Lưu Ý Quan Trọng}
+
+\begin{enumerate}
+    \item \textbf{CHỈ DÙNG BINANCE TESTNET} - Không dùng tiền thật
+    \item \textbf{API có chi phí} - OpenAI charge theo token
+    \item \textbf{Không phải lời khuyên đầu tư} - Chỉ học tập
+    \item \textbf{Rủi ro cao} - Trading có thể mất tiền
+    \item \textbf{Backup code} - Commit thường xuyên
+\end{enumerate}
+
+\section{Tính Năng}
+
+\begin{itemize}
+    \item Binance Testnet integration
+    \item Tính chỉ báo kỹ thuật (MA, RSI, ATR)
+    \item ChatGPT AI phân tích thị trường
+    \item Quản lý rủi ro tự động (Risk Manager)
+    \item Database và logging chi tiết
+    \item Báo cáo hiệu suất và biểu đồ vốn
+    \item Auto trading với stop loss/take profit
+\end{itemize}
+
+\section{Lỗi Thường Gặp}
+
+\begin{longtable}{p{5cm}|p{8cm}}
+\toprule
+\textbf{Lỗi} & \textbf{Giải pháp} \\
+\midrule
+API key invalid & Kiểm tra file cấu hình \\
+\midrule
+OpenAI limit & Giảm frequency hoặc check billing \\
+\midrule
+Balance insufficient & Nạp testnet funds \\
+\bottomrule
+\end{longtable}
+
+\vspace{2cm}
+
+\begin{center}
+\textbf{⚠️ Educational Use Only - Không dùng tiền thật!}
+\end{center}
+
+\end{document}
+

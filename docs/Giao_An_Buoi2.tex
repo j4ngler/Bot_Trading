@@ -1,0 +1,245 @@
+% -*- coding: utf-8 -*-
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[vietnamese]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{enumitem}
+
+\geometry{margin=2.3cm}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Buổi 2 - Code Indicators}
+\fancyhead[R]{Trading Bot - Testnet}
+\fancyfoot[C]{\thepage}
+
+\title{\textbf{Giáo Án Buổi 2}\\
+\large Làm Việc Với Code: Indicators, Risk Manager, GUI}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section*{1. Mục tiêu buổi học}
+\begin{itemize}[leftmargin=1.2cm]
+    \item Đọc hiểu code của \texttt{technical\_indicators.py}, \texttt{risk\_manager.py}, \texttt{gui\_app.py}.
+    \item Chạy và chỉnh sửa code trực tiếp (thêm print, thay tham số, bật/tắt điều kiện) để quan sát tác động.
+    \item Kết nối luồng dữ liệu: Binance \rightarrow Indicators \rightarrow Risk Manager \rightarrow GUI.
+    \item Hoàn thành checklist debug cơ bản trước khi chuyển sang chế độ giao dịch thật.
+\end{itemize}
+
+\section*{2. Chuẩn bị}
+\begin{itemize}[leftmargin=1.2cm]
+    \item Mỗi nhóm có máy đã cài môi trường, mở sẵn VS Code/PyCharm + terminal.
+    \item Tài khoản Binance Testnet và file \texttt{.env} mẫu (nếu học sinh chưa có thì dùng demo chung).
+    \item Slide/tài liệu phát tay: sơ đồ module + hướng dẫn chạy \texttt{run.py}, \texttt{python -m src.technical\_indicators}.
+    \item Git đã init để học sinh có thể commit lại sau khi thử nghiệm.
+\end{itemize}
+
+\section*{3. Lộ trình 90 phút}
+
+\subsection*{A. Warm-up (5')}
+
+\textbf{Bước 1:} Đặt câu hỏi mở cho cả lớp: ``Nếu đoạn code tính MA bị sai, bot sẽ ra lệnh như thế nào?'' 
+\\[1mm]
+\textbf{Bước 2:} Gợi ý học sinh nhắc lại chuỗi luồng dữ liệu: 
+\begin{itemize}[leftmargin=0.5cm]
+    \item Indicators (dữ liệu) $\rightarrow$ 
+    \item Risk Manager (ra quyết định) $\rightarrow$ 
+    \item Lệnh Binance
+\end{itemize}
+\\[1mm]
+\textbf{Bước 3:} Kết luận: Lý thuyết kinh tế (cung cầu, kỳ vọng hợp lý) chỉ chính xác khi dữ liệu đầu vào chuẩn. Buổi này tập trung soi code để đảm bảo ``đúng lý thuyết, đúng cả triển khai''.
+
+\subsection*{B. Technical Indicators Hands-on (25')}
+
+\textbf{Bước 1: Mở file và giải thích cấu trúc (5')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item GV dẫn HS mở \texttt{src/technical\_indicators.py}
+    \item Giải thích nhanh các bước: 
+    \begin{enumerate}
+        \item Lấy candle từ Binance API
+        \item Xử lý DataFrame (preprocess)
+        \item Tính MA/RSI/ATR bằng \texttt{pandas\_ta}
+    \end{enumerate}
+\end{itemize}
+
+\textbf{Bước 2: Thêm log và chạy thử (10')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item HS thêm đoạn log vào hàm \texttt{get\_all\_indicators()}:
+\begin{verbatim}
+print(df[['close','ma','rsi','atr']].tail())
+\end{verbatim}
+    \item Chạy lệnh trong terminal:
+\begin{verbatim}
+python src/technical_indicators.py
+\end{verbatim}
+    \item Quan sát kết quả: 5 dòng cuối của DataFrame hiển thị giá trị MA, RSI, ATR
+\end{itemize}
+
+\textbf{Bước 3: Bài tập thay đổi tham số (10')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Mở \texttt{src/config.py}, tìm dòng \texttt{MA\_PERIOD = 20}
+    \item Đổi thành \texttt{MA\_PERIOD = 10}
+    \item Khởi động lại bot: \texttt{python run.py}
+    \item Quan sát sự khác biệt trong GUI: giá trị MA(10) khác MA(20) như thế nào?
+    \item Ghi chú: MA ngắn hạn (10) nhạy cảm hơn, phản ứng nhanh hơn với biến động giá
+\end{itemize}
+
+\textbf{Kết luận:} Sau hoạt động này, học sinh cần trả lời được:
+\begin{itemize}[leftmargin=0.5cm]
+    \item Candles đang lấy từ đâu? (Binance API)
+    \item Vì sao phải preprocess? (Chuẩn hóa dữ liệu, xử lý missing values)
+    \item Nếu MA\_PERIOD thay đổi thì GUI báo gì? (Giá trị MA khác đi, ảnh hưởng đến khuyến nghị)
+\end{itemize}
+
+\textit{Liên hệ kinh tế:} MA và RSI là công cụ lượng hóa kỳ vọng thị trường (xu hướng, trạng thái quá mua/quá bán). Khi thay đổi tham số, học sinh thấy rõ sự khác biệt giữa chiến lược dài hạn (MA 20) và ngắn hạn (MA 10), tương tự cách các nhà giao dịch cân nhắc đa khung thời gian.
+
+\subsection*{C. Risk Manager Debug (25')}
+
+\textbf{Bước 1: Đọc và phân tích hàm (5')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Mở \texttt{src/risk\_manager.py}, tìm hàm \texttt{check\_risk\_conditions()}
+    \item HS xác định ba điều kiện chính:
+    \begin{enumerate}
+        \item RSI: phải nằm trong khoảng 30--70 (tránh quá mua/quá bán)
+        \item Confidence: độ tin cậy từ AI phải $\geq$ 50\%
+        \item ATR: biến động không được quá cao (ATR/giá $\leq$ 25\%)
+    \end{enumerate}
+\end{itemize}
+
+\textbf{Bước 2: Thực hành comment điều kiện ATR (10')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Tìm đoạn code kiểm tra ATR trong \texttt{check\_risk\_conditions()}:
+\begin{verbatim}
+if current_price > 0 and atr/current_price > config.ATR_VOLATILITY_THRESHOLD:
+    return False, "Biến động quá cao..."
+\end{verbatim}
+    \item Comment đoạn này:
+\begin{verbatim}
+# if current_price > 0 and atr/current_price > config.ATR_VOLATILITY_THRESHOLD:
+#     return False, "Biến động quá cao..."
+\end{verbatim}
+    \item Lưu file
+\end{itemize}
+
+\textbf{Bước 3: Chạy bot và quan sát (5')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Chạy \texttt{python run.py}
+    \item Nhấn ``BẮT ĐẦU'' trong GUI
+    \item Quan sát log: bot sẽ không còn báo ``Biến động quá cao''
+    \item Nếu đủ điều kiện khác, bot sẽ thực thi lệnh (log hiển thị ``5️⃣ Thực thi lệnh GIAO DỊCH THẬT...'')
+\end{itemize}
+
+\textbf{Bước 4: Hoàn tác và ghi chú (5')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Bỏ comment, khôi phục lại điều kiện ATR
+    \item Ghi vào checklist: ``Đã hiểu vì sao cần giới hạn ATR: tránh giao dịch khi thị trường quá biến động''
+\end{itemize}
+
+\textbf{Bài tập nâng cao (tùy chọn):} Thêm tham số \texttt{ATR\_VOLATILITY\_THRESHOLD} vào \texttt{config.py}, cho phép chỉnh ngưỡng mà không cần sửa code.
+
+\textit{Nhấn mạnh:} Phần này giúp học sinh hiểu vì sao log gần đây toàn ``Biến động quá cao''. Khi các em tự tay bật/tắt điều kiện, các em nhận ra Risk Manager là ``công tắc'' quyết định có lệnh thật hay không, gắn với lý thuyết quản lý rủi ro:
+\begin{itemize}[leftmargin=0.5cm]
+    \item Quy tắc 1\% vốn: chỉ rủi ro tối đa 1\% mỗi lệnh
+    \item ATR như proxy cho độ biến động, tương đương ``beta'' trong tài chính
+    \item Nguyên tắc ``bảo toàn vốn trước khi nghĩ đến lợi nhuận''
+\end{itemize}
+Giáo viên nhắc lại: luôn khôi phục cấu hình an toàn sau khi thử nghiệm.
+
+\subsection*{D. GUI Wiring (20')}
+
+\textbf{Bước 1: Tìm hàm và phân tích luồng dữ liệu (5')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Mở \texttt{src/gui\_app.py}, tìm hàm \texttt{update\_info\_from\_result()}
+    \item HS ghi chú dữ liệu nào từ \texttt{result} được đưa lên label nào:
+    \begin{itemize}
+        \item \texttt{result['price']} $\rightarrow$ \texttt{self.price\_label}
+        \item \texttt{result['ma']} $\rightarrow$ \texttt{self.ma\_label}
+        \item \texttt{result['rsi']} $\rightarrow$ \texttt{self.rsi\_label}
+        \item \texttt{result['recommendation']} $\rightarrow$ \texttt{self.recommendation\_label}
+    \end{itemize}
+\end{itemize}
+
+\textbf{Bước 2: Thực hành thêm thông tin (10')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Tìm vị trí hiển thị khuyến nghị trong \texttt{update\_info\_from\_result()}
+    \item Thêm log hoặc label mới hiển thị ``Stop Loss/Take Profit'' (nếu có trong \texttt{result})
+    \item Hoặc thêm frame mới trong tab ``Báo Cáo'' để hiển thị thông tin này
+    \item Chạy GUI để kiểm tra
+\end{itemize}
+
+\textbf{Bước 3: Bài tập đổi màu (5')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Tìm đoạn code đặt màu cho \texttt{recommendation\_label}
+    \item Sửa logic màu:
+    \begin{itemize}
+        \item BUY = xanh lá (\texttt{'#00ff00'})
+        \item SELL = đỏ (\texttt{'#ff0000'})
+        \item HOLD = vàng (\texttt{'#ffff00'})
+    \end{itemize}
+    \item Chạy GUI, nhấn ``CHẠY DEMO'' để kiểm chứng màu sắc
+\end{itemize}
+
+\textit{Mục đích:} Giúp học sinh thấy rõ dữ liệu từ \texttt{run\_once()} đang ``flow'' như thế nào lên giao diện và báo cáo. Khi chỉnh được màu/label, các em hiểu rằng:
+\begin{itemize}[leftmargin=0.5cm]
+    \item GUI chỉ là lớp hiển thị cho dữ liệu đã tính toán bên dưới
+    \item GUI cũng là công cụ giúp trader giữ kỷ luật hành vi:
+    \begin{itemize}
+        \item Màu đỏ cảnh báo SELL giúp giảm tâm lý FOMO
+        \item Màu xanh BUY tạo cảm giác tự tin có kiểm soát
+    \end{itemize}
+\end{itemize}
+
+\subsection*{E. Mini-project Checkpoint (10')}
+
+\textbf{Bước 1: Ghi chú thay đổi (5')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Mỗi nhóm điền vào bảng:
+    \begin{itemize}
+        \item File đã chỉnh: \texttt{technical\_indicators.py}, \texttt{risk\_manager.py}, \texttt{gui\_app.py}
+        \item Tác dụng: thêm log, đổi màu, comment điều kiện
+        \item Có cần hoàn tác không: Có (khôi phục điều kiện ATR, màu mặc định)
+    \end{itemize}
+\end{itemize}
+
+\textbf{Bước 2: Commit lên Git (5')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Mở terminal, chạy \texttt{git status} để xem các file đã thay đổi
+    \item Commit tạm (chỉ local, không push):
+\begin{verbatim}
+git add .
+git commit -m "lesson-2 experiments: test indicators, risk manager, GUI"
+\end{verbatim}
+    \item Lưu ý: đây là commit tạm để lưu trạng thái thử nghiệm
+\end{itemize}
+
+\textit{Giải thích cho giáo viên:} Phần checkpoint nhằm hình thành thói quen version control. Dù là lớp học, các em vẫn nên ``ghi chú kỹ thuật'' để dễ dàng quay lại cấu hình ban đầu trước khi demo. Đây cũng là cách mô phỏng quy trình chuyên nghiệp trong tài chính: mọi thay đổi chiến lược đều phải được ghi lại và có thể truy vết.
+
+\section*{4. Bài tập về nhà}
+\begin{itemize}[leftmargin=1.2cm]
+    \item Viết script Python trong thư mục \texttt{scripts/} gọi \texttt{technical\_indicators.get\_all\_indicators()} và export CSV.
+    \item Tìm hiểu thêm về MACD hoặc Bollinger Bands, chuẩn bị ý tưởng để thêm vào bot (file nào cần chỉnh?).
+\end{itemize}
+
+\section*{5. Ghi chú cho giáo viên}
+\begin{itemize}[leftmargin=1.2cm]
+    \item Theo dõi kỹ khi HS chỉnh Risk Manager để tránh nhầm lẫn giữa Testnet và Mainnet.
+    \item Khuyến khích nhóm dùng Git để undo nhanh khi code lỗi.
+    \item Nếu máy yếu không chạy được GUI, cho HS mở log text và vẫn làm bài tập code.
+\end{itemize}
+
+\vspace{0.5cm}
+\begin{center}
+\textbf{Kết thúc buổi 2:}\\
+\textit{Học sinh có thể đọc, chỉnh và chạy lại code của indicators, risk manager và GUI.}
+\end{center}
+
+\end{document}
+

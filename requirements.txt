@@ -16,6 +16,7 @@ pandas-ta>=0.3.14b0
 matplotlib>=3.5.0
 plotly>=5.0.0
 dash>=2.0.0
+Pillow>=9.0.0  # Để hiển thị biểu đồ trong GUI
 
 # Utilities
 python-dotenv>=0.19.0

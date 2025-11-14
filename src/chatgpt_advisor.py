@@ -4,7 +4,7 @@ Phù hợp cho học sinh cấp 3 - AI phân tích thị trường
 """
 
 from openai import OpenAI
-import config
+from . import config
 import json
 import re
 
@@ -101,6 +101,52 @@ class ChatGPTAdvisor:
                 'reason': 'Không thể kết nối ChatGPT API',
                 'confidence': 0
             }
+
+    def chat_with_user(self, history, user_message, *, temperature=0.6, max_tokens=400):
+        """Trả lời hội thoại tự nhiên với người dùng.
+
+        Args:
+            history (list[dict]): Danh sách tin nhắn hội thoại theo định dạng OpenAI
+                (mỗi phần tử có `role` và `content`). Nên bắt đầu bằng thông điệp hệ thống.
+            user_message (str): Nội dung người dùng muốn hỏi.
+            temperature (float): Mức độ sáng tạo của mô hình.
+            max_tokens (int): Số token tối đa trong câu trả lời.
+
+        Returns:
+            str: Phản hồi của ChatGPT.
+        """
+
+        if not hasattr(self, 'client') or self.client is None:
+            raise RuntimeError("ChatGPT client chưa được khởi tạo. Kiểm tra OPENAI_API_KEY.")
+
+        if not isinstance(history, list):
+            raise ValueError("history phải là list messages")
+
+        try:
+            messages = history + [{"role": "user", "content": user_message}]
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens
+            )
+
+            reply = response.choices[0].message.content.strip()
+
+            # Cập nhật hội thoại (giữ tối đa 20 lượt gần nhất để tránh tràn token)
+            history.append({"role": "user", "content": user_message})
+            history.append({"role": "assistant", "content": reply})
+            if len(history) > 40:
+                # Giữ lại thông điệp hệ thống và 38 tin nhắn cuối
+                system_messages = [msg for msg in history if msg.get("role") == "system"]
+                recent_messages = [msg for msg in history if msg.get("role") != "system"][-38:]
+                history.clear()
+                history.extend(system_messages + recent_messages)
+
+            return reply
+
+        except Exception as e:
+            raise RuntimeError(f"Không thể trò chuyện với ChatGPT: {e}")
     
     def _parse_recommendation(self, text):
         """

@@ -8,7 +8,7 @@ import sqlite3
 import time
 from datetime import datetime
 from binance.client import Client
-import config
+from . import config
 
 
 class DataCollector:

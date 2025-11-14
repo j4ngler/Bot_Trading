@@ -17,14 +17,14 @@ from datetime import datetime
 import traceback
 
 # Import các module đã tạo
-from data_collector import DataCollector
-from technical_indicators import TechnicalIndicators
-from chatgpt_advisor import ChatGPTAdvisor
-from trade_executor import TradeExecutor
-from risk_manager import RiskOrderManager
-from database_logger import DatabaseLogger
-from reporting_monitoring import ReportingMonitoring
-import config
+from .data_collector import DataCollector
+from .technical_indicators import TechnicalIndicators
+from .chatgpt_advisor import ChatGPTAdvisor
+from .trade_executor import TradeExecutor
+from .risk_manager import RiskOrderManager
+from .database_logger import DatabaseLogger
+from .reporting_monitoring import ReportingMonitoring
+from . import config
 
 
 class TradingBot:
@@ -135,10 +135,15 @@ class TradingBot:
             
             # Bước 5: Thực thi lệnh nếu đủ điều kiện
             if should_execute and advice['recommendation'] in ['BUY', 'SELL']:
-                print("\n5️⃣ Thực thi lệnh...")
+                print("\n5️⃣ Thực thi lệnh GIAO DỊCH THẬT...")
+                print("   ⚠️ Lưu ý: Đây là giao dịch thật trên Binance Testnet")
                 self._execute_trade(advice['recommendation'], indicators, advice)
             else:
-                print("\n⏸️ Tạm thời GIỮ vị thế - Không giao dịch")
+                if not should_execute:
+                    print(f"\n⏸️ Tạm thời GIỮ vị thế - Không giao dịch")
+                    print(f"   Lý do: {reason if 'reason' in locals() else 'Điều kiện chưa đạt'}")
+                elif advice['recommendation'] == 'HOLD':
+                    print("\n⏸️ AI khuyến nghị HOLD - Không giao dịch")
             
             # Lưu kết quả
             result = {
@@ -160,18 +165,6 @@ class TradingBot:
             print(f"❌ Lỗi trong chu kỳ phân tích: {e}")
             traceback.print_exc()
             return None
-    
-    def _should_execute(self, indicators, advice):
-        """
-        Quyết định có nên thực thi lệnh không (DEPRECATED - dùng risk_manager)
-        """
-        # Kiểm tra lệnh mở
-        open_orders = self.executor.get_open_orders(self.symbol)
-        if len(open_orders) > 0:
-            print("   ⚠️ Đã có lệnh mở - Không giao dịch mới")
-            return False
-        
-        return True
     
     def _execute_trade(self, recommendation, indicators, advice):
         """
@@ -220,13 +213,16 @@ class TradingBot:
         except Exception as e:
             print(f"⚠️ Lỗi ghi log: {e}")
     
-    def run_continuous(self, interval_minutes=15):
+    def run_continuous(self, interval_minutes=None):
         """
         Chạy bot liên tục
         
         Args:
-            interval_minutes: Chu kỳ phân tích (phút)
+            interval_minutes: Chu kỳ phân tích (phút). Nếu None, dùng giá trị từ config
         """
+        if interval_minutes is None:
+            interval_minutes = config.TRADING_INTERVAL_MINUTES
+        
         self.running = True
         print(f"\n🔄 Bắt đầu chạy bot - Chu kỳ: {interval_minutes} phút")
         print("   Nhấn Ctrl+C để dừng\n")
@@ -257,47 +253,20 @@ def main():
     """)
     
     bot = TradingBot()
-    
-    # Chọn chế độ chạy
-    print("Chọn chế độ:")
-    print("0️⃣ Chạy với GIAO DIỆN GUI (Tkinter)")
-    print("1️⃣ Chạy MỘT LẦN (phân tích và dừng)")
-    print("2️⃣ Chạy LIÊN TỤC (tự động mỗi 15 phút)")
-    print("3️⃣ Chạy DEMO (không giao dịch)")
-    print("4️⃣ Xem BÁO CÁO hiệu suất")
-    
-    choice = input("\n👉 Nhập lựa chọn (0/1/2/3/4): ")
-    
-    if choice == '0':
-        # Chạy GUI mode
-        try:
-            import tkinter as tk
-            from gui_app import TradingBotGUI
-            
-            root = tk.Tk()
-            app = TradingBotGUI(root, bot)
-            root.mainloop()
-        except ImportError:
-            print("❌ Không tìm thấy module tkinter hoặc gui_app!")
-            print("💡 Hãy cài tkinter: pip install tk")
-    
-    elif choice == '1':
-        bot.run_once()
-    elif choice == '2':
-        bot.run_continuous(interval_minutes=15)
-    elif choice == '3':
-        print("\n📊 DEMO MODE - Chỉ phân tích, không giao dịch")
-        bot.run_once()
-    elif choice == '4':
-        print("\n📊 XEM BÁO CÁO...")
-        bot.reporting.generate_summary_report()
-        bot.reporting.plot_equity_curve()
-        bot.reporting.export_html_report()
-        print("\n✅ Đã xuất báo cáo: trading_report.html và equity_curve.png")
-    else:
-        print("❌ Lựa chọn không hợp lệ!")
+
+    # Khởi chạy GUI ngay, người dùng bấm nút để chạy/stop; tự cập nhật mỗi 5 phút và sinh báo cáo
+    try:
+        import tkinter as tk
+        from .gui_app import TradingBotGUI
+
+        root = tk.Tk()
+        app = TradingBotGUI(root, bot)
+        root.mainloop()
+    except Exception as e:
+        print("❌ Không khởi chạy được GUI (tkinter/gui_app). Chạy chế độ CLI liên tục thay thế.")
+        print(f"Lý do: {e}")
+        bot.run_continuous()  # Dùng giá trị mặc định từ config (5 phút)
 
 
 if __name__ == '__main__':
     main()
-

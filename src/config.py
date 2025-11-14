@@ -39,13 +39,24 @@ ATR_PERIOD = 14         # ATR
 RISK_PERCENTAGE = 1.0   # Rủi ro 1% vốn mỗi lệnh
 STOP_LOSS_PERCENT = 2.0 # Stop loss 2%
 TAKE_PROFIT_PERCENT = 3.0 # Take profit 3%
+# Ngưỡng ATR so với giá để chặn biến động quá lớn (mặc định 25%)
+ATR_VOLATILITY_THRESHOLD = float(os.getenv('ATR_VOLATILITY_THRESHOLD', '0.25'))
 
 # Số lượng tối đa lệnh mở
 MAX_POSITIONS = 1
 
+# Chu kỳ phân tích (phút)
+TRADING_INTERVAL_MINUTES = 5  # Mặc định 5 phút (đã rút ngắn từ 15 phút)
+
 # ============ LOGGING & REPORTING ============
-LOG_FILE = 'trading_logs.txt'
-DATABASE_FILE = 'trading_history.db'
+# Đường dẫn thư mục data (tương đối từ project root)
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
+# Đảm bảo thư mục data tồn tại
+os.makedirs(DATA_DIR, exist_ok=True)
+LOG_FILE = os.path.join(DATA_DIR, 'trading_logs.txt')
+DATABASE_FILE = os.path.join(DATA_DIR, 'trading_history.db')
+REPORT_HTML_FILE = os.path.join(DATA_DIR, 'trading_report.html')
+EQUITY_CURVE_FILE = os.path.join(DATA_DIR, 'equity_curve.png')
 
 # Dashboard port (cho Plotly Dash)
 DASHBOARD_PORT = 8050
