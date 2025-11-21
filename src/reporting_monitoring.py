@@ -250,31 +250,20 @@ class ReportingMonitoring:
                 print("⚠️ Không có dữ liệu để vẽ biểu đồ")
                 return
             
-            # Vẽ biểu đồ - tăng kích thước: 16x10 (từ 12x8)
-            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(16, 10))
+            # Vẽ biểu đồ - chỉ giữ đường cong vốn
+            fig, ax1 = plt.subplots(figsize=(14, 8))
             
             # Biểu đồ 1: Equity curve
             if 'account_balance' in df.columns:
                 df['timestamp'] = pd.to_datetime(df['timestamp'])
                 ax1.plot(df['timestamp'], df['account_balance'], color='green', linewidth=3)
-                ax1.set_title('📈 Equity Curve (Đường Cong Vốn)', fontsize=18, fontweight='bold')
+                ax1.set_title('📈 Đường Cong Vốn (Equity Curve)', fontsize=18, fontweight='bold')
                 ax1.set_xlabel('Thời gian', fontsize=14)
-                ax1.set_ylabel('Số dư (USDT)', fontsize=14)
+                ax1.set_ylabel('Số dư tài khoản (USDT)', fontsize=14)
                 ax1.tick_params(labelsize=12)
                 ax1.grid(True, alpha=0.3)
                 ax1.fill_between(df['timestamp'], df['account_balance'], alpha=0.3, color='green')
             
-            # Biểu đồ 2: PnL theo thời gian
-            if 'total_pnl' in df.columns:
-                df['timestamp'] = pd.to_datetime(df['timestamp'])
-                colors = ['green' if x > 0 else 'red' for x in df['total_pnl']]
-                ax2.bar(df['timestamp'], df['total_pnl'], color=colors, alpha=0.7)
-                ax2.axhline(y=0, color='black', linestyle='--', linewidth=1)
-                ax2.set_title('📊 PnL theo thời gian', fontsize=18, fontweight='bold')
-                ax2.set_xlabel('Thời gian', fontsize=14)
-                ax2.set_ylabel('PnL (USDT)', fontsize=14)
-                ax2.tick_params(labelsize=12)
-                ax2.grid(True, alpha=0.3)
             
             plt.tight_layout()
             plt.savefig(output_file, dpi=300, bbox_inches='tight')

@@ -1,0 +1,135 @@
+% -*- coding: utf-8 -*-
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[vietnamese]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{enumitem}
+
+\geometry{margin=2.3cm}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Buổi 3 - AI Advisor \& Báo cáo}
+\fancyhead[R]{Trading Bot - Testnet}
+\fancyfoot[C]{\thepage}
+
+\title{\textbf{Giáo Án Buổi 3}\\
+\large ChatGPT Advisor, Auto-Reporting \& Đánh Giá Hiệu Suất}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section*{1. Mục tiêu buổi học}
+\begin{itemize}[leftmargin=1.2cm]
+    \item Hiểu cách \texttt{ChatGPTAdvisor} tạo khuyến nghị và giới hạn của AI trong giao dịch.
+    \item Thực hành chỉnh prompt, đọc log phản hồi, đo ``độ tin cậy'' từ mô hình.
+    \item Kết nối chuỗi: AI Advisor $\rightarrow$ Risk Manager $\rightarrow$ báo cáo \texttt{reporting\_monitoring.py}.
+    \item Hoàn thiện dashboard (tab Báo Cáo + Chat) và xuất báo cáo \texttt{duong\_cong\_von.png}, \texttt{trading\_report.html}.
+\end{itemize}
+
+\section*{2. Chuẩn bị}
+\begin{itemize}[leftmargin=1.2cm]
+    \item Máy đã cài \texttt{requirements.txt}, có tài khoản OpenAI (hoặc key demo từ giáo viên).
+    \item File \texttt{.env} mẫu: \texttt{OPENAI\_API\_KEY}, \texttt{BINANCE\_API\_KEY}, \texttt{BINANCE\_SECRET\_KEY}.
+    \item Slide tóm tắt kiến trúc AI Advisor + Reporting (sơ đồ module trong README).
+    \item Dữ liệu mẫu trong \texttt{data/trading\_history.db} để HS tạo báo cáo ngay cả khi chưa giao dịch.
+\end{itemize}
+
+\section*{3. Lộ trình 90 phút}
+
+\subsection*{A. Warm-up: ``AI có sai không?'' (5')}
+\textbf{Hoạt động:} Chiếu 3 log ChatGPT (BUY, SELL, HOLD) và hỏi: ``Nếu AI khuyến nghị BUY liên tục thì Risk Manager xử lý sao?'' \\
+\textbf{Trả lời gợi ý:} Risk Manager chỉ cho phép lệnh khi các điều kiện vẫn đạt: RSI không quá 70, ATR/giá không vượt ngưỡng biến động, độ tin cậy (confidence) $\ge$ ngưỡng yêu cầu và chưa vượt giới hạn vị thế. Nếu một trong các điều kiện thất bại, lệnh vẫn bị chặn dù AI liên tục BUY. \\
+\textbf{Mục tiêu} giúp HS nhắc lại rằng AI chỉ là bộ phân tích, cuối cùng vẫn cần luật quản trị rủi ro và báo cáo để kiểm tra.
+
+\subsection*{B. ChatGPT Advisor deep-dive (25')}
+\textbf{Bước 1: Giải phẫu file \texttt{chatgpt\_advisor.py} (8')} \\
+GV hướng dẫn đọc:
+\begin{enumerate}[leftmargin=0.8cm]
+    \item Hàm \texttt{\_\_init\_\_}: tạo OpenAI client, lấy model từ \texttt{config.OPENAI\_MODEL}.
+    \item Hàm \texttt{analyze\_market}: dựng prompt từ \texttt{TRADING\_PROMPT}, gửi API, parse BUY/SELL/HOLD.
+    \item Hàm \texttt{chat\_with\_user}: duy trì \texttt{history}, giới hạn 40 message.
+\end{enumerate}
+
+\textbf{Bước 2: Chỉnh prompt và thử nghiệm (10')} \\
+\begin{itemize}[leftmargin=0.6cm]
+    \item HS mở \texttt{config.py}, thay đổi câu ``Luôn nhắc nhở về rủi ro'' thành thông điệp của nhóm.
+    \item Chạy \texttt{python run.py} \rightarrow Tab Chat, gửi câu hỏi ``BTC đang xu hướng gì?'' để xem phản hồi mới.
+    \item Quan sát log trong panel Logs: thảo luận khi nào nên tin khuyến nghị AI.
+\end{itemize}
+
+\textbf{Bước 3: Đọc ``confidence'' (7')} \\
+\begin{itemize}[leftmargin=0.6cm]
+    \item Trong \texttt{run\_once()}, in thêm dòng \texttt{advice['confidence']} để so sánh với giá trị Risk Manager yêu cầu.
+    \item Bài tập: thay điều kiện confidence $\ge 60$ trong \texttt{risk\_manager.py} và xem AI còn bao nhiêu lệnh được phép.
+\end{itemize}
+
+\subsection*{C. Tự động hóa báo cáo (25')}
+\textbf{Bước 1: Tạo báo cáo từ DB (10')} \\
+\begin{itemize}[leftmargin=0.6cm]
+    \item Chạy script:
+\begin{verbatim}
+python -m src.reporting_monitoring
+\end{verbatim}
+    \item HS kiểm tra thư mục \texttt{data/} có \texttt{trading\_report.html} và \texttt{duong\_cong\_von.png}.
+    \item Thảo luận: PnL âm/ dương thể hiện gì? Equity curve cho thấy xu hướng vốn ra sao?
+\end{itemize}
+
+\textbf{Bước 2: Tùy biến tab Báo cáo trong GUI (10')} \\
+\begin{itemize}[leftmargin=0.6cm]
+    \item Mở \texttt{gui\_app.py}, tìm hàm \texttt{refresh\_report()} và \texttt{update\_chart()}.
+    \item HS sửa màu sắc/tiêu đề để nhấn mạnh ``📈 Đường Cong Vốn''.
+    \item Bấm ``Làm mới báo cáo'' trong GUI để thấy ảnh mới.
+\end{itemize}
+
+\textbf{Bước 3: Bài tập mini (5')} \\
+Mỗi nhóm thêm một dòng chú thích dưới biểu đồ: ``Cập nhật lúc HH:MM'' (gợi ý dùng \texttt{datetime.now()} trong \texttt{update\_chart}).
+
+\subsection*{D. Case study: ``AI đưa lệnh sai'' (20')}
+\begin{enumerate}[leftmargin=0.9cm]
+    \item GV cung cấp log giả: ChatGPT BUY nhưng giá giảm mạnh.
+    \item HS dùng báo cáo 30 ngày để tìm PnL lệnh đó, xác định vì sao Risk Manager vẫn cho phép (đủ điều kiện?).
+    \item Nhóm đề xuất cách cải thiện: tăng yêu cầu confidence, thêm chỉ báo phụ, chỉnh stop-loss trong \texttt{risk\_manager}.
+\end{enumerate}
+Kết thúc bằng bảng ``Hành động khắc phục'':
+\begin{itemize}[leftmargin=0.6cm]
+    \item \textbf{Triệu chứng}: AI BUY sai.
+    \item \textbf{Nguyên nhân}: RSI trong vùng nhiễu, ATR thấp nên Risk Manager OK.
+    \item \textbf{Giải pháp}: thêm checklist kiểm tra xu hướng, xem lại prompt AI.
+\end{itemize}
+
+\subsection*{E. Tổng kết \& checklist Git (5')}
+\begin{itemize}[leftmargin=0.6cm]
+    \item HS ghi lại thay đổi đã làm: prompt AI, ngưỡng confidence, giao diện báo cáo.
+    \item Commit tạm với thông điệp \texttt{"lesson-3: ai advisor \& reporting"}.
+    \item Nhắc nhở: luôn ẩn API key khi share repo.
+\end{itemize}
+
+\section*{4. Bài tập về nhà}
+\begin{itemize}[leftmargin=1.2cm]
+    \item Viết đoạn script trong \texttt{scripts/} tự động gửi email báo cáo HTML mỗi 24h (gợi ý dùng \texttt{smtplib} hoặc chỉ cần lưu file).
+    \item Thiết kế thêm một câu hỏi ``what-if'' để ChatGPT trả lời (ví dụ: ``Nếu RSI > 80 thì bạn khuyên gì?''), chuẩn bị demo cho buổi 4.
+\end{itemize}
+
+\section*{5. Ghi chú cho giáo viên}
+\begin{itemize}[leftmargin=1.2cm]
+    \item Chuẩn bị sẵn key OpenAI dự phòng vì học sinh dễ gặp lỗi quota.
+    \item Nếu hạ tầng mạng yếu, cho phép HS dùng log text thay vì GUI.
+    \item Nhắc HS ghi chép các prompt đã thử để so sánh hiệu quả ở buổi sau (hướng tới ``prompt engineering'').
+\end{itemize}
+
+\vspace{0.5cm}
+\begin{center}
+\textbf{Kết thúc buổi 3:}\\
+\textit{Học sinh hiểu và có thể tinh chỉnh ChatGPT Advisor, theo dõi báo cáo tự động, và đánh giá hiệu suất giao dịch dựa trên dữ liệu thực nghiệm.}
+\end{center}
+
+\end{document}
+

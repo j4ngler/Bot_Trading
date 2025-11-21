@@ -245,11 +245,9 @@ def main():
     """
     print("""
     ╔═══════════════════════════════════════════════════════════╗
-    ║         TRADING BOT - ChatGPT + Binance Testnet           ║
-    ║                Phù hợp cho học sinh cấp 3                  ║
+    ║         TRADING BOT - ChatGPT + Binance Testnet           ║                                                           
     ╚═══════════════════════════════════════════════════════════╝
-    
-    ⚠️ CHỈ DÙNG BINANCE TESTNET - KHÔNG DÙNG TIỀN THẬT!
+
     """)
     
     bot = TradingBot()

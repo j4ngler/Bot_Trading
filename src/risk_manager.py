@@ -5,8 +5,17 @@ Module quản lý rủi ro và quản lý lệnh
 - Quản lý vị thế và rủi ro
 """
 
-from . import config
+import sys
+import os
 from datetime import datetime
+
+# Xử lý import config - hỗ trợ chạy từ cả root và thư mục src
+try:
+    from . import config
+except ImportError:
+    # Nếu chạy trực tiếp từ thư mục src
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from src import config
 
 
 class RiskOrderManager:

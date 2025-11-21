@@ -25,6 +25,7 @@ class TradingBotGUI:
         self.running = False
         self.is_demo = False
         self.cycle_count = 0
+        self.chat_history = self._init_chat_history()
         
         self.setup_gui()
     
@@ -150,6 +151,11 @@ class TradingBotGUI:
         report_tab = tk.Frame(self.notebook, bg='#2d2d2d')
         self.notebook.add(report_tab, text="📊 Báo Cáo")
         self.setup_report_tab(report_tab)
+
+        # Tab 3: Chat
+        chat_tab = tk.Frame(self.notebook, bg='#2d2d2d')
+        self.notebook.add(chat_tab, text="💬 Trò chuyện")
+        self.setup_chat_tab(chat_tab)
         
         # Stats Frame (dưới tabs)
         stats_frame = tk.Frame(parent, bg='#2d2d2d')
@@ -204,9 +210,12 @@ class TradingBotGUI:
                                bg='#2196F3', fg='white', font=('Arial', 10, 'bold'))
         refresh_btn.pack(side=tk.LEFT, padx=5)
         
-        # Scrollable frame cho báo cáo
-        canvas = tk.Canvas(report_container, bg='#1e1e1e', highlightthickness=0)
-        scrollbar = ttk.Scrollbar(report_container, orient="vertical", command=canvas.yview)
+        # Khu vực cuộn cho các thống kê
+        scroll_area = tk.Frame(report_container, bg='#2d2d2d')
+        scroll_area.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+        
+        canvas = tk.Canvas(scroll_area, bg='#1e1e1e', highlightthickness=0)
+        scrollbar = ttk.Scrollbar(scroll_area, orient="vertical", command=canvas.yview)
         scrollable_frame = tk.Frame(canvas, bg='#1e1e1e')
         
         scrollable_frame.bind(
@@ -226,7 +235,7 @@ class TradingBotGUI:
         # Frame cho biểu đồ
         chart_frame = tk.LabelFrame(report_container, text="📈 Biểu Đồ", 
                                    bg='#2d2d2d', fg='white', font=('Arial', 10, 'bold'))
-        chart_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        chart_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
         
         self.chart_frame = chart_frame
         
@@ -448,12 +457,8 @@ class TradingBotGUI:
             # Cập nhật biểu đồ
             self.update_chart()
             
-            # Cập nhật stats ở dưới
-            self.total_trades_label.config(text=f"Tổng lệnh: {report.get('total_trades', 0)}")
-            self.win_rate_label.config(text=f"Win Rate: {report.get('win_rate', 0):.2f}%")
-            pnl = report.get('total_pnl', 0)
-            pnl_color = '#00ff00' if pnl >= 0 else '#ff0000'
-            self.pnl_label.config(text=f"PnL: ${pnl:.2f}", fg=pnl_color)
+            # Cập nhật stats ở dưới (nếu đã khởi tạo)
+            self._update_summary_stats(report)
             
         except Exception as e:
             error_label = tk.Label(self.report_frame,
@@ -461,6 +466,50 @@ class TradingBotGUI:
                                  bg='#1e1e1e', fg='#ff0000',
                                  font=('Arial', 12))
             error_label.pack(pady=20)
+
+    def setup_chat_tab(self, parent):
+        """Thiết lập tab trò chuyện với ChatGPT"""
+        chat_frame = tk.Frame(parent, bg='#2d2d2d')
+        chat_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        instruction = tk.Label(
+            chat_frame,
+            text="💬 Hỏi đáp nhanh với trợ lý AI (Binance Testnet - mục đích học tập).",
+            bg='#2d2d2d', fg='#ffffff', font=('Arial', 10, 'italic')
+        )
+        instruction.pack(anchor='w', pady=(0, 5))
+
+        self.chat_display = scrolledtext.ScrolledText(
+            chat_frame,
+            bg='#1e1e1e', fg='#00ffcc',
+            font=('Consolas', 10),
+            wrap=tk.WORD, height=15
+        )
+        self.chat_display.pack(fill=tk.BOTH, expand=True, pady=5)
+        self.chat_display.config(state='disabled')
+
+        input_frame = tk.Frame(chat_frame, bg='#2d2d2d')
+        input_frame.pack(fill=tk.X, pady=(5, 0))
+
+        self.chat_input = tk.Entry(input_frame, font=('Arial', 11))
+        self.chat_input.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
+        self.chat_input.bind('<Return>', lambda event: self.send_chat_message())
+
+        self.send_chat_btn = tk.Button(
+            input_frame,
+            text="Gửi",
+            command=self.send_chat_message,
+            bg='#4CAF50', fg='white',
+            font=('Arial', 10, 'bold'),
+            width=10
+        )
+        self.send_chat_btn.pack(side=tk.RIGHT)
+
+        if not self.bot or not getattr(self.bot, 'advisor', None):
+            self.send_chat_btn.config(state='disabled')
+            self._append_chat_message("system", "⚠️ ChatGPT Advisor chưa sẵn sàng. Kiểm tra API key.")
+        else:
+            self._append_chat_message("system", "🤖 Xin chào! Hỏi mình bất cứ điều gì về bot và thị trường nhé.")
     
     def update_chart(self):
         """Cập nhật biểu đồ equity curve"""
@@ -472,30 +521,13 @@ class TradingBotGUI:
             # Kiểm tra file biểu đồ
             chart_file = config.EQUITY_CURVE_FILE
             if os.path.exists(chart_file):
-                # Hiển thị ảnh biểu đồ
-                from PIL import Image, ImageTk
-                img = Image.open(chart_file)
-                # Tăng kích thước biểu đồ: 1200x600 (từ 800x400)
-                img = img.resize((1200, 600), Image.Resampling.LANCZOS)
-                photo = ImageTk.PhotoImage(img)
-                
-                chart_label = tk.Label(self.chart_frame, image=photo, bg='#2d2d2d')
-                chart_label.image = photo  # Giữ reference
-                chart_label.pack(pady=10)
+                self._render_chart_image(chart_file)
             else:
                 # Nếu chưa có biểu đồ, tạo từ dữ liệu
                 try:
                     self.bot.reporting.plot_equity_curve()
                     if os.path.exists(chart_file):
-                        from PIL import Image, ImageTk
-                        img = Image.open(chart_file)
-                        # Tăng kích thước biểu đồ: 1200x600 (từ 800x400)
-                        img = img.resize((1200, 600), Image.Resampling.LANCZOS)
-                        photo = ImageTk.PhotoImage(img)
-                        
-                        chart_label = tk.Label(self.chart_frame, image=photo, bg='#2d2d2d')
-                        chart_label.image = photo
-                        chart_label.pack(pady=10)
+                        self._render_chart_image(chart_file)
                     else:
                         no_data_label = tk.Label(self.chart_frame,
                                                text="⚠️ Chưa có dữ liệu để vẽ biểu đồ\nHãy chạy bot ít nhất một chu kỳ",
@@ -521,4 +553,107 @@ class TradingBotGUI:
                                   bg='#2d2d2d', fg='#ff0000',
                                   font=('Arial', 12))
             error_label.pack(pady=20)
+
+    def _render_chart_image(self, chart_file):
+        """Render ảnh biểu đồ với kích cỡ linh hoạt theo khung"""
+        from PIL import Image, ImageTk
+        img = Image.open(chart_file)
+        
+        # Đảm bảo khung đã cập nhật kích thước trước khi lấy width
+        self.chart_frame.update_idletasks()
+        self.report_canvas.update_idletasks()
+        
+        available_width = self.chart_frame.winfo_width()
+        if available_width <= 0:
+            available_width = self.report_canvas.winfo_width()
+        if available_width <= 0:
+            available_width = config.REPORT_CHART_MAX_WIDTH
+        available_width = max(0, available_width - 40)  # trừ padding khi có
+        
+        target_width = min(available_width, config.REPORT_CHART_MAX_WIDTH)
+        target_width = max(config.REPORT_CHART_MIN_WIDTH, target_width)
+        
+        # Giữ đúng tỉ lệ ảnh
+        aspect_ratio = img.width / img.height if img.height else 1
+        target_height = int(target_width / aspect_ratio) if aspect_ratio else config.REPORT_CHART_MAX_HEIGHT
+        
+        if target_height > config.REPORT_CHART_MAX_HEIGHT:
+            target_height = config.REPORT_CHART_MAX_HEIGHT
+            target_width = int(target_height * aspect_ratio) if aspect_ratio else target_width
+        
+        img = img.resize((int(target_width), int(target_height)), Image.Resampling.LANCZOS)
+        photo = ImageTk.PhotoImage(img)
+        
+        chart_label = tk.Label(self.chart_frame, image=photo, bg='#2d2d2d')
+        chart_label.image = photo  # tránh bị GC
+        chart_label.pack(pady=10)
+
+    def _init_chat_history(self):
+        """Khởi tạo lịch sử chat cho ChatGPT"""
+        if not self.bot or not getattr(self.bot, 'advisor', None):
+            return None
+        return [{
+            "role": "system",
+            "content": (
+                "Bạn là trợ lý giao dịch AI thân thiện, dùng tiếng Việt dễ hiểu cho học sinh cấp 3. "
+                "Giải thích rõ ràng, nhắc người dùng đây là môi trường học tập trên Binance Testnet "
+                "và không đưa lời khuyên đầu tư thực tế."
+            )
+        }]
+
+    def _append_chat_message(self, role, message):
+        """Hiển thị tin nhắn trên khung chat"""
+        if not hasattr(self, 'chat_display'):
+            return
+        self.chat_display.config(state='normal')
+        prefix = "Bạn" if role == "user" else ("AI" if role == "assistant" else "Hệ thống")
+        self.chat_display.insert(tk.END, f"{prefix}: {message}\n")
+        self.chat_display.see(tk.END)
+        self.chat_display.config(state='disabled')
+
+    def send_chat_message(self):
+        """Gửi câu hỏi tới ChatGPT"""
+        if not self.chat_history:
+            messagebox.showwarning("Thông báo", "ChatGPT Advisor chưa sẵn sàng.")
+            return
+
+        user_message = self.chat_input.get().strip()
+        if not user_message:
+            return
+
+        self.chat_input.delete(0, tk.END)
+        self._append_chat_message("user", user_message)
+
+        self.send_chat_btn.config(state='disabled')
+
+        def worker():
+            try:
+                reply = self.bot.advisor.chat_with_user(self.chat_history, user_message)
+                self.root.after(0, lambda: self._handle_chat_response(reply))
+            except Exception as e:
+                self.root.after(0, lambda: self._handle_chat_error(e))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _handle_chat_response(self, reply):
+        """Hiển thị phản hồi từ ChatGPT"""
+        self._append_chat_message("assistant", reply)
+        self.send_chat_btn.config(state='normal')
+        self.chat_input.focus_set()
+
+    def _handle_chat_error(self, error):
+        """Thông báo khi chat lỗi"""
+        self._append_chat_message("system", f"❌ Lỗi trò chuyện: {error}")
+        self.send_chat_btn.config(state='normal')
+        self.chat_input.focus_set()
+
+    def _update_summary_stats(self, report):
+        """Cập nhật các nhãn tổng hợp dưới tab"""
+        if not hasattr(self, 'total_trades_label'):
+            return
+        self.total_trades_label.config(text=f"Tổng lệnh: {report.get('total_trades', 0)}")
+        self.win_rate_label.config(text=f"Win Rate: {report.get('win_rate', 0):.2f}%")
+        pnl = report.get('total_pnl', 0)
+        pnl_color = '#00ff00' if pnl >= 0 else '#ff0000'
+        self.pnl_label.config(text=f"PnL: ${pnl:.2f}", fg=pnl_color)
 

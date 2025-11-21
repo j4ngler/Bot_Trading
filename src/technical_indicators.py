@@ -83,7 +83,7 @@ class TechnicalIndicators:
         return atr
     
     @staticmethod
-    def get_all_indicators(df, ma_period=20, rsi_period=14, atr_period=14):
+    def get_all_indicators(df, ma_period=10, rsi_period=14, atr_period=14):
         """
         Tính tất cả chỉ số một lúc - hàm tiện ích
         
@@ -113,6 +113,9 @@ class TechnicalIndicators:
         result_df['RSI'] = rsi
         result_df['ATR'] = atr
         
+        # Log dữ liệu cuối cùng
+        print(result_df[['close', 'MA', 'RSI', 'ATR']].tail())
+        
         return {
             'current_price': current_price,
             'ma': ma_value,
@@ -120,7 +123,6 @@ class TechnicalIndicators:
             'atr': atr_value,
             'raw_data': result_df
         }
-
 
 if __name__ == '__main__':
     # Test module với dữ liệu mẫu
@@ -142,7 +144,7 @@ if __name__ == '__main__':
     
     print(f"\n📊 KẾT QUẢ:")
     print(f"💰 Giá hiện tại: ${indicators['current_price']:.2f}")
-    print(f"📈 MA(20): ${indicators['ma']:.2f}")
+    print(f"📈 MA(10): ${indicators['ma']:.2f}")
     print(f"📊 RSI(14): {indicators['rsi']:.2f}")
     print(f"📉 ATR(14): ${indicators['atr']:.2f}")
     

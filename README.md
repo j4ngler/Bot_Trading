@@ -162,7 +162,7 @@ TradingBot/
 │   ├── trading_history.db     # Database lịch sử giao dịch
 │   ├── trading_logs.txt        # Log file
 │   ├── trading_report.html     # Báo cáo HTML
-│   └── equity_curve.png        # Biểu đồ vốn
+│   └── duong_cong_von.png      # Biểu đồ vốn
 │
 ├── docs/                      # 📚 Tài liệu
 │   ├── WORKFLOW.md

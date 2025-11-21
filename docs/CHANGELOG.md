@@ -114,7 +114,7 @@ python main.py
 
 **Xuất file:**
 - `trading_report.html` - Báo cáo HTML
-- `equity_curve.png` - Biểu đồ vốn
+- `duong_cong_von.png` - Biểu đồ vốn
 - `trading_data.json` - Dữ liệu JSON
 
 **Xem database:**

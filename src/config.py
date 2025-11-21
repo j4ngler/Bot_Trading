@@ -31,7 +31,7 @@ TRADE_SYMBOL = 'BTCUSDT'
 INTERVALS = ['1m', '5m', '15m', '1h']
 
 # Chỉ số kỹ thuật
-MA_PERIOD = 20          # Moving Average
+MA_PERIOD = 15          # Moving Average
 RSI_PERIOD = 14         # RSI
 ATR_PERIOD = 14         # ATR
 
@@ -56,7 +56,11 @@ os.makedirs(DATA_DIR, exist_ok=True)
 LOG_FILE = os.path.join(DATA_DIR, 'trading_logs.txt')
 DATABASE_FILE = os.path.join(DATA_DIR, 'trading_history.db')
 REPORT_HTML_FILE = os.path.join(DATA_DIR, 'trading_report.html')
-EQUITY_CURVE_FILE = os.path.join(DATA_DIR, 'equity_curve.png')
+EQUITY_CURVE_FILE = os.path.join(DATA_DIR, 'duong_cong_von.png')
+# Kích cỡ biểu đồ trên tab báo cáo (px)
+REPORT_CHART_MIN_WIDTH = int(os.getenv('REPORT_CHART_MIN_WIDTH', '600'))
+REPORT_CHART_MAX_WIDTH = int(os.getenv('REPORT_CHART_MAX_WIDTH', '1400'))
+REPORT_CHART_MAX_HEIGHT = int(os.getenv('REPORT_CHART_MAX_HEIGHT', '650'))
 
 # Dashboard port (cho Plotly Dash)
 DASHBOARD_PORT = 8050

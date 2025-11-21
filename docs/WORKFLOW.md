@@ -211,7 +211,7 @@ flowchart LR
 
 - On-demand: menu `main.py` option 4 tạo:
   - Console report (30 ngày)
-  - `equity_curve.png`
+  - `duong_cong_von.png`
   - `trading_report.html`
 
 KPI gợi ý:
