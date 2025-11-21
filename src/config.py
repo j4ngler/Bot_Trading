@@ -10,14 +10,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ============ BINANCE TESTNET API ============
-BINANCE_API_KEY = os.getenv('BINANCE_API_KEY', 'your_testnet_api_key_here')
-BINANCE_SECRET_KEY = os.getenv('BINANCE_SECRET_KEY', 'your_testnet_secret_key_here')
+BINANCE_API_KEY = os.getenv('BINANCE_API_KEY', '0CRX3A5G1WMSeZMp8mJgaJL6uQVg9lISFoaumgdf4vMzJF3mTYpm291QGHl7G5ng')
+BINANCE_SECRET_KEY = os.getenv('BINANCE_SECRET_KEY', 'MyomWeTwb573WnIAr7nBQ7yq6vsOVl6h2kC8Zqu6FNgU069xBbjfqi1dZrd5qwJg')
 
 # ============ OPENAI CHATGPT API ============
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', 'your_openai_api_key_here')
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 
 # Model: dùng gpt-4o-mini để tiết kiệm, hoặc gpt-4o
-OPENAI_MODEL = 'gpt-4o-mini'
+OPENAI_MODEL = 'gpt-3'  # 'gpt-4o-mini' or 'gpt-4o'
 
 # ============ TRADING CONFIGURATION ============
 # Symbol để trade
