@@ -436,27 +436,27 @@ class TradingBotGUI:
             ]
             
             for i, (label, value, color) in enumerate(stats):
+                row = i // 4
+                col = i % 4
                 stat_frame = tk.Frame(stats_container, bg='#2d2d2d', relief=tk.RAISED, bd=2)
-                stat_frame.grid(row=i//2, column=i%2, padx=10, pady=5, sticky='ew')
-                stats_container.grid_columnconfigure(i%2, weight=1)
+                stat_frame.grid(row=row, column=col, padx=8, pady=5, sticky='nsew')
+                stats_container.grid_columnconfigure(col, weight=1)
                 
                 label_widget = tk.Label(stat_frame, text=label, 
                                        bg='#2d2d2d', fg='#aaaaaa',
                                        font=('Arial', 9))
-                label_widget.pack(pady=5)
+                label_widget.pack(pady=(6, 2))
                 
                 value_widget = tk.Label(stat_frame, text=value,
                                        bg='#2d2d2d', fg=color,
                                        font=('Arial', 16, 'bold'))
-                value_widget.pack(pady=5)
+                value_widget.pack(pady=(0, 6))
             
-            # Cập nhật canvas scroll
+            # Cập nhật canvas scroll và biểu đồ
             self.report_canvas.update_idletasks()
             self.report_canvas.configure(scrollregion=self.report_canvas.bbox("all"))
-            
-            # Cập nhật biểu đồ
             self.update_chart()
-            
+        
             # Cập nhật stats ở dưới (nếu đã khởi tạo)
             self._update_summary_stats(report)
             

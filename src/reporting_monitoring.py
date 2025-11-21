@@ -255,7 +255,9 @@ class ReportingMonitoring:
             
             # Biểu đồ 1: Equity curve
             if 'account_balance' in df.columns:
+                df = df.copy()
                 df['timestamp'] = pd.to_datetime(df['timestamp'])
+                df = df.sort_values('timestamp')
                 ax1.plot(df['timestamp'], df['account_balance'], color='green', linewidth=3)
                 ax1.set_title('📈 Đường Cong Vốn (Equity Curve)', fontsize=18, fontweight='bold')
                 ax1.set_xlabel('Thời gian', fontsize=14)
