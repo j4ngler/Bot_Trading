@@ -40,8 +40,6 @@ class RiskOrderManager:
         self.risk_percent = config.RISK_PERCENTAGE
         self.stop_loss_percent = config.STOP_LOSS_PERCENT
         self.take_profit_percent = config.TAKE_PROFIT_PERCENT
-        self.max_positions = config.MAX_POSITIONS
-        
         print("✅ Risk & Order Manager đã sẵn sàng")
     
     def calculate_position_size(self, entry_price, signal, current_atr=None):
@@ -185,31 +183,6 @@ class RiskOrderManager:
             print(f"❌ Lỗi tính R/R: {e}")
             return 0
     
-    def update_account_balance(self, new_balance):
-        """Cập nhật số dư tài khoản"""
-        self.account_balance = new_balance
-    
-    def set_risk_parameters(self, risk_percent=None, stop_loss=None, take_profit=None):
-        """
-        Điều chỉnh tham số rủi ro
-        
-        Args:
-            risk_percent: % vốn rủi ro mỗi lệnh
-            stop_loss: % stop loss
-            take_profit: % take profit
-        """
-        if risk_percent:
-            self.risk_percent = risk_percent
-        if stop_loss:
-            self.stop_loss_percent = stop_loss
-        if take_profit:
-            self.take_profit_percent = take_profit
-        
-        print(f"✅ Cập nhật tham số rủi ro:")
-        print(f"   ⚠️ Rủi ro: {self.risk_percent}%")
-        print(f"   📉 Stop Loss: {self.stop_loss_percent}%")
-        print(f"   📈 Take Profit: {self.take_profit_percent}%")
-
 
 if __name__ == '__main__':
     # Test module

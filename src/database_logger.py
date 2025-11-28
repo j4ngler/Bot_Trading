@@ -208,50 +208,6 @@ class DatabaseLogger:
         except Exception as e:
             print(f"❌ Lỗi lưu lệnh: {e}")
     
-    def save_performance_report(self, total_trades, winning_trades, losing_trades,
-                                total_pnl, account_balance):
-        """
-        Lưu báo cáo hiệu suất
-        
-        Args:
-            total_trades: Tổng số lệnh
-            winning_trades: Số lệnh thắng
-            losing_trades: Số lệnh thua
-            total_pnl: Tổng PnL
-            account_balance: Số dư tài khoản hiện tại
-        """
-        try:
-            conn = sqlite3.connect(self.db_file)
-            cursor = conn.cursor()
-            
-            timestamp = datetime.now().isoformat()
-            
-            # Tính các chỉ số
-            win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
-            
-            cursor.execute('''
-                INSERT INTO performance 
-                (timestamp, total_trades, winning_trades, losing_trades, 
-                 total_pnl, win_rate, account_balance)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                timestamp,
-                total_trades,
-                winning_trades,
-                losing_trades,
-                total_pnl,
-                win_rate,
-                account_balance
-            ))
-            
-            conn.commit()
-            conn.close()
-            
-            print(f"✅ Đã lưu báo cáo hiệu suất: Win Rate = {win_rate:.2f}%")
-            
-        except Exception as e:
-            print(f"❌ Lỗi lưu performance: {e}")
-    
     def get_performance_feedback(self):
         """
         Lấy phản hồi hiệu quả giao dịch để gửi lại cho ChatGPT
@@ -306,55 +262,6 @@ class DatabaseLogger:
             
         except Exception as e:
             print(f"❌ Lỗi lấy feedback: {e}")
-            return {}
-    
-    def get_trading_statistics(self, days=30):
-        """
-        Lấy thống kê giao dịch
-        
-        Args:
-            days: Số ngày cần xem
-        
-        Returns:
-            dict: Thống kê giao dịch
-        """
-        try:
-            conn = sqlite3.connect(self.db_file)
-            cursor = conn.cursor()
-            
-            # Đếm tổng lệnh
-            cursor.execute('''
-                SELECT COUNT(*) FROM trading_history
-                WHERE timestamp >= datetime('now', '-' || ? || ' days')
-            ''', (days,))
-            
-            total_trades = cursor.fetchone()[0]
-            
-            # Đếm lệnh thắng/thua (giả định status='FILLED' là thành công)
-            cursor.execute('''
-                SELECT 
-                    COUNT(*) as total,
-                    SUM(CASE WHEN pnl > 0 THEN 1 ELSE 0 END) as wins,
-                    SUM(CASE WHEN pnl < 0 THEN 1 ELSE 0 END) as losses,
-                    AVG(pnl) as avg_pnl
-                FROM trading_history
-                WHERE timestamp >= datetime('now', '-' || ? || ' days')
-                AND pnl IS NOT NULL
-            ''', (days,))
-            
-            stats = cursor.fetchone()
-            
-            conn.close()
-            
-            return {
-                'total_trades': total_trades,
-                'wins': stats[1] if stats and stats[1] else 0,
-                'losses': stats[2] if stats and stats[2] else 0,
-                'avg_pnl': stats[3] if stats and stats[3] else 0
-            }
-            
-        except Exception as e:
-            print(f"❌ Lỗi lấy thống kê: {e}")
             return {}
     
     def export_to_json(self, output_file='trading_data.json'):

@@ -13,10 +13,6 @@ load_dotenv()
 BINANCE_API_KEY = os.getenv('BINANCE_API_KEY', 'your_testnet_api_key_here')
 BINANCE_SECRET_KEY = os.getenv('BINANCE_SECRET_KEY', 'your_testnet_secret_key_here')
 
-# Testnet endpoints (SAFE - không dùng tiền thật)
-BINANCE_TESTNET_URL = 'https://testnet.binance.vision'
-BINANCE_SPOT_TESTNET_URL = 'https://testnet.binance.vision/api'
-
 # ============ OPENAI CHATGPT API ============
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', 'your_openai_api_key_here')
 
@@ -26,9 +22,6 @@ OPENAI_MODEL = 'gpt-4o-mini'
 # ============ TRADING CONFIGURATION ============
 # Symbol để trade
 TRADE_SYMBOL = 'BTCUSDT'
-
-# Khung thời gian
-INTERVALS = ['1m', '5m', '15m', '1h']
 
 # Chỉ số kỹ thuật
 MA_PERIOD = 15          # Moving Average
@@ -41,9 +34,6 @@ STOP_LOSS_PERCENT = 2.0 # Stop loss 2%
 TAKE_PROFIT_PERCENT = 3.0 # Take profit 3%
 # Ngưỡng ATR so với giá để chặn biến động quá lớn (mặc định 25%)
 ATR_VOLATILITY_THRESHOLD = float(os.getenv('ATR_VOLATILITY_THRESHOLD', '0.25'))
-
-# Số lượng tối đa lệnh mở
-MAX_POSITIONS = 1
 
 # Chu kỳ phân tích (phút)
 TRADING_INTERVAL_MINUTES = 5  # Mặc định 5 phút (đã rút ngắn từ 15 phút)
@@ -61,9 +51,6 @@ EQUITY_CURVE_FILE = os.path.join(DATA_DIR, 'duong_cong_von.png')
 REPORT_CHART_MIN_WIDTH = int(os.getenv('REPORT_CHART_MIN_WIDTH', '600'))
 REPORT_CHART_MAX_WIDTH = int(os.getenv('REPORT_CHART_MAX_WIDTH', '1000'))
 REPORT_CHART_MAX_HEIGHT = int(os.getenv('REPORT_CHART_MAX_HEIGHT', '650'))
-
-# Dashboard port (cho Plotly Dash)
-DASHBOARD_PORT = 8050
 
 # ============ PROMPT CHO CHATGPT ============
 TRADING_PROMPT = """
@@ -86,12 +73,5 @@ KHÔNG ĐƯỢC đưa ra khuyến nghị cụ thể Mua/Bán.
 Chỉ phân tích dữ liệu và giải thích ý nghĩa.
 
 Trả lời bằng tiếng Việt, ngắn gọn (3-4 câu).
-"""
-
-SIMPLE_PROMPT = """
-Dựa trên dữ liệu: MA={ma}, RSI={rsi}, ATR={atr}
-Cho BTC/USDT, khuyến nghị: BUY / SELL / HOLD?
-
-Chỉ trả lời: BUY, SELL, hoặc HOLD
 """
 

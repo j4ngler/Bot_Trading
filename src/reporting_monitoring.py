@@ -250,21 +250,21 @@ class ReportingMonitoring:
                 print("⚠️ Không có dữ liệu để vẽ biểu đồ")
                 return
             
-            # Vẽ biểu đồ - chỉ giữ đường cong vốn
-            fig, ax1 = plt.subplots(figsize=(14, 8))
+            # Vẽ biểu đồ theo thứ tự chu kỳ chạy
+            _fig, ax1 = plt.subplots(figsize=(14, 8))
             
-            # Biểu đồ 1: Equity curve
             if 'account_balance' in df.columns:
                 df = df.copy()
                 df['timestamp'] = pd.to_datetime(df['timestamp'])
                 df = df.sort_values('timestamp')
-                ax1.plot(df['timestamp'], df['account_balance'], color='green', linewidth=3)
-                ax1.set_title('📈 Đường Cong Vốn (Equity Curve)', fontsize=18, fontweight='bold')
-                ax1.set_xlabel('Thời gian', fontsize=14)
+                df['cycle'] = range(1, len(df) + 1)
+                ax1.plot(df['cycle'], df['account_balance'], color='green', linewidth=3)
+                ax1.set_title('📈 Đường Cong Vốn Theo Chu Kỳ', fontsize=18, fontweight='bold')
+                ax1.set_xlabel('Chu kỳ chạy bot', fontsize=14)
                 ax1.set_ylabel('Số dư tài khoản (USDT)', fontsize=14)
                 ax1.tick_params(labelsize=12)
                 ax1.grid(True, alpha=0.3)
-                ax1.fill_between(df['timestamp'], df['account_balance'], alpha=0.3, color='green')
+                ax1.fill_between(df['cycle'], df['account_balance'], alpha=0.3, color='green')
             
             
             plt.tight_layout()

@@ -116,7 +116,7 @@ def chat_loop(bot: TradingBot, stop_event: threading.Event) -> None:
 def install_signal_handlers(stop_event: threading.Event) -> None:
     """Cho phép dừng ứng dụng bằng Ctrl+C khi chạy trên main thread."""
 
-    def handler(signum, frame):  # pragma: no cover - khó test tự động
+    def handler(_signum, _frame):  # pragma: no cover - khó test tự động
         print("\n⚠️ Nhận tín hiệu dừng, đang thoát...")
         stop_event.set()
 

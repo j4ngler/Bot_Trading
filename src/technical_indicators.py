@@ -137,7 +137,7 @@ if __name__ == '__main__':
         'low': 40000 + np.random.randn(100) * 150,
         'open': 40000 + np.random.randn(100) * 100
     })
-    df.index = dates
+    df.set_index(dates, inplace=True)
     
     # Tính chỉ số
     indicators = TechnicalIndicators.get_all_indicators(df)

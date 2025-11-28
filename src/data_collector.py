@@ -105,22 +105,6 @@ class DataCollector:
             print(f"❌ Lỗi lấy candle: {e}")
             return pd.DataFrame()  # Trả về DataFrame rỗng
     
-    def save_to_db(self, df, table_name='price_data'):
-        """
-        Lưu dữ liệu vào SQLite database
-        
-        Args:
-            df: DataFrame cần lưu
-            table_name: Tên bảng trong database
-        """
-        try:
-            conn = sqlite3.connect(config.DATABASE_FILE)
-            df.to_sql(table_name, conn, if_exists='append', index=False)
-            conn.close()
-            print(f"✅ Đã lưu {len(df)} dòng vào {table_name}")
-        except Exception as e:
-            print(f"❌ Lỗi lưu database: {e}")
-    
     def get_realtime_data(self, symbol='BTCUSDT', interval='1m'):
         """
         Hàm tiện ích: Lấy dữ liệu real-time mới nhất

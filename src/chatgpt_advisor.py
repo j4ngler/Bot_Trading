@@ -174,40 +174,6 @@ class ChatGPTAdvisor:
             return int(percent_match.group(1))
         return 70  # Mặc định
     
-    def simple_analysis(self, ma, rsi, atr):
-        """
-        Phân tích đơn giản - chỉ trả về BUY/SELL/HOLD
-        
-        Dùng cho học sinh mới bắt đầu
-        """
-        # Tạo prompt đơn giản
-        prompt = config.SIMPLE_PROMPT.format(ma=ma, rsi=rsi, atr=atr)
-        
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                temperature=0.3,  # Thấp hơn để kết quả ổn định
-                max_tokens=10  # Chỉ cần trả lời ngắn
-            )
-            
-            result = response.choices[0].message.content.strip()
-            
-            # Chỉ chấp nhận BUY, SELL, HOLD
-            if result.upper() in ['BUY', 'SELL', 'HOLD']:
-                return result.upper()
-            else:
-                return 'HOLD'  # Mặc định nếu không hiểu
-                
-        except Exception as e:
-            print(f"❌ Lỗi phân tích đơn giản: {e}")
-            return 'HOLD'
-
 
 if __name__ == '__main__':
     # Test module

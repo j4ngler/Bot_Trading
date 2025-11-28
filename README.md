@@ -108,21 +108,14 @@ OPENAI_API_KEY=sk-your_key
 
 ## 🚀 Sử Dụng
 
-### Chạy Bot
+### Chạy Bot (GUI mặc định)
 
 ```bash
-# Chế độ GUI (khuyến nghị) - Tự động mở giao diện đồ họa
 python run.py
-
-# Chế độ auto + chat trực tiếp với AI
-python run_app.py
 ```
 
-### Chế Độ Auto (app.py)
-
-- Chạy liên tục các chu kỳ phân tích/giao dịch (mặc định 5 phút/lần, có thể đổi bằng biến môi trường `APP_TRADING_INTERVAL`).
-- Mở phiên chat trực tiếp với trợ lý AI để đặt câu hỏi trong lúc bot hoạt động.
-- Gõ `/exit` trong cửa sổ chat để dừng bot.
+- Lệnh trên tự động mở giao diện TradingBotGUI với đầy đủ tab Logs/Báo cáo/Chat.
+- Trong trường hợp môi trường không hỗ trợ GUI, chương trình tự chuyển sang chế độ CLI liên tục (thông báo ngay trong terminal).
 
 ### Chế Độ GUI (main.py - Mặc định)
 
@@ -139,15 +132,14 @@ Khi chạy `python main.py`, GUI sẽ tự động mở:
 ```
 TradingBot/
 ├── run.py                     # 🚀 Entry point chính (GUI mode)
-├── run_app.py                 # 🚀 Entry point cho AI chat mode
 ├── requirements.txt           # Dependencies
 ├── .env                       # API keys (tự tạo)
 ├── README.md                  # File này
 │
 ├── src/                       # 📦 Source code chính
 │   ├── __init__.py
-│   ├── main.py                # Bot chính
-│   ├── app.py                 # AI chat mode
+│   ├── main.py                # Bot chính (gọi GUI, fallback CLI)
+│   ├── app.py                 # Vòng lặp auto + chat CLI (dùng nội bộ/backup)
 │   ├── gui_app.py             # ✨ Module GUI với Tkinter
 │   ├── config.py               # Cấu hình
 │   ├── data_collector.py       # Thu thập dữ liệu Binance

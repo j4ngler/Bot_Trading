@@ -258,7 +258,7 @@ def main():
         from .gui_app import TradingBotGUI
 
         root = tk.Tk()
-        app = TradingBotGUI(root, bot)
+        TradingBotGUI(root, bot)
         root.mainloop()
     except Exception as e:
         print("❌ Không khởi chạy được GUI (tkinter/gui_app). Chạy chế độ CLI liên tục thay thế.")

@@ -23,9 +23,9 @@ class TradingBotGUI:
         self.root = root
         self.bot = trading_bot
         self.running = False
-        self.is_demo = False
         self.cycle_count = 0
         self.chat_history = self._init_chat_history()
+        self.auto_scroll_var = tk.BooleanVar(value=True)
         
         self.setup_gui()
     
@@ -178,6 +178,33 @@ class TradingBotGUI:
         log_frame = tk.LabelFrame(parent, text="📝 Logs & Thông tin", 
                                  bg='#2d2d2d', fg='white', font=('Arial', 10, 'bold'))
         log_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        controls_frame = tk.Frame(log_frame, bg='#2d2d2d')
+        controls_frame.pack(fill=tk.X, padx=5, pady=(5, 0))
+
+        clear_btn = tk.Button(
+            controls_frame,
+            text="🧹 Xóa log",
+            command=self.clear_logs,
+            bg='#555555',
+            fg='white',
+            font=('Arial', 9, 'bold')
+        )
+        clear_btn.pack(side=tk.LEFT)
+
+        auto_scroll_check = tk.Checkbutton(
+            controls_frame,
+            text="Tự cuộn",
+            variable=self.auto_scroll_var,
+            onvalue=True,
+            offvalue=False,
+            bg='#2d2d2d',
+            fg='white',
+            selectcolor='#2d2d2d',
+            activebackground='#2d2d2d',
+            font=('Arial', 9)
+        )
+        auto_scroll_check.pack(side=tk.LEFT, padx=15)
         
         # Text area for logs
         self.log_text = scrolledtext.ScrolledText(log_frame, 
@@ -185,6 +212,11 @@ class TradingBotGUI:
                                                  font=('Consolas', 9),
                                                  wrap=tk.WORD)
         self.log_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.log_text.tag_config('time', foreground='#9CDCFE')
+        self.log_text.tag_config('info', foreground='#E5E5E5')
+        self.log_text.tag_config('success', foreground='#7CFC00')
+        self.log_text.tag_config('warning', foreground='#FFC857')
+        self.log_text.tag_config('error', foreground='#FF6B6B')
         
         # Add initial welcome message
         self.log("🚀 Trading Bot GUI đã khởi động!")
@@ -233,9 +265,15 @@ class TradingBotGUI:
         self.report_canvas = canvas
         
         # Frame cho biểu đồ
-        chart_frame = tk.LabelFrame(report_container, text="📈 Biểu Đồ", 
-                                   bg='#2d2d2d', fg='white', font=('Arial', 10, 'bold'))
-        chart_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+        chart_frame = tk.LabelFrame(
+            report_container,
+            text="📈 Biểu Đồ",
+            bg='#2d2d2d',
+            fg='white',
+            font=('Arial', 10, 'bold')
+        )
+        # Không dùng expand để tránh khung biểu đồ phóng to bất thường khi chưa có dữ liệu
+        chart_frame.pack(fill=tk.X, expand=False, padx=10, pady=(0, 10))
         
         self.chart_frame = chart_frame
         
@@ -245,8 +283,26 @@ class TradingBotGUI:
     def log(self, message):
         """Thêm log vào text area"""
         timestamp = datetime.now().strftime('%H:%M:%S')
-        self.log_text.insert(tk.END, f"[{timestamp}] {message}\n")
-        self.log_text.see(tk.END)
+        tag = self._resolve_log_tag(message)
+        self.log_text.insert(tk.END, f"[{timestamp}] ", ('time',))
+        self.log_text.insert(tk.END, f"{message}\n", (tag,))
+        if self.auto_scroll_var.get():
+            self.log_text.see(tk.END)
+
+    def clear_logs(self):
+        """Xóa toàn bộ log khỏi khung hiển thị"""
+        self.log_text.delete('1.0', tk.END)
+
+    def _resolve_log_tag(self, message):
+        """Xác định màu log dựa trên nội dung"""
+        text = message.upper()
+        if any(key in text for key in ['❌', 'LỖI', 'ERROR', 'FAILED']):
+            return 'error'
+        if any(key in text for key in ['⚠️', 'CẢNH BÁO', 'WARNING']):
+            return 'warning'
+        if any(key in text for key in ['✅', 'THÀNH CÔNG', 'SUCCESS', 'ĐÃ LƯU']):
+            return 'success'
+        return 'info'
     
     def start_bot(self):
         """Bắt đầu bot - THỰC HIỆN GIAO DỊCH THẬT"""
@@ -269,7 +325,6 @@ class TradingBotGUI:
             return
         
         self.running = True
-        self.is_demo = False
         self.start_btn.config(state='disabled')
         self.stop_btn.config(state='normal')
         self.demo_btn.config(state='disabled')
@@ -279,7 +334,6 @@ class TradingBotGUI:
         self.status_label.config(text="🟢 ĐANG CHẠY (GIAO DỊCH THẬT)", fg='#4CAF50')
         
         # Lấy interval từ config
-        import config
         self.bot.trading_interval = config.TRADING_INTERVAL_MINUTES
         
         # Chạy bot trong thread riêng
@@ -303,7 +357,6 @@ class TradingBotGUI:
             return
         
         self.log("\n🔍 Chạy DEMO (chỉ phân tích)...")
-        self.is_demo = True
         
         # Chạy một chu kỳ
         thread = threading.Thread(target=self.run_bot_once, daemon=True)
@@ -493,7 +546,7 @@ class TradingBotGUI:
 
         self.chat_input = tk.Entry(input_frame, font=('Arial', 11))
         self.chat_input.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
-        self.chat_input.bind('<Return>', lambda event: self.send_chat_message())
+        self.chat_input.bind('<Return>', lambda _: self.send_chat_message())
 
         self.send_chat_btn = tk.Button(
             input_frame,
@@ -583,9 +636,11 @@ class TradingBotGUI:
         
         img = img.resize((int(target_width), int(target_height)), Image.Resampling.LANCZOS)
         photo = ImageTk.PhotoImage(img)
+        if not hasattr(self, '_chart_photo_refs'):
+            self._chart_photo_refs = []
+        self._chart_photo_refs[:] = [photo]  # giữ tham chiếu tránh GC
         
         chart_label = tk.Label(self.chart_frame, image=photo, bg='#2d2d2d')
-        chart_label.image = photo  # tránh bị GC
         chart_label.pack(pady=10)
 
     def _init_chat_history(self):
