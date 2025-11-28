@@ -161,7 +161,7 @@ class ReportingMonitoring:
             traceback.print_exc()
             return {}
     
-    def plot_equity_curve(self, output_file=None):
+    def plot_equity_curve(self, output_file=None, start_time=None, equity_points=None):
         if output_file is None:
             output_file = config.EQUITY_CURVE_FILE
         """
@@ -169,102 +169,132 @@ class ReportingMonitoring:
         
         Args:
             output_file: Tên file output
+            start_time: Thời điểm bắt đầu phiên hiện tại (lọc dữ liệu)
+            equity_points: Danh sách (cycle, balance) để vẽ trực tiếp
         """
         try:
-            conn = sqlite3.connect(self.db_file)
-            
-            # Thử đọc từ bảng performance trước (nếu có)
-            query_perf = '''
-                SELECT 
-                    timestamp,
-                    account_balance,
-                    total_pnl
-                FROM performance
-                ORDER BY timestamp ASC
-            '''
-            df_perf = pd.read_sql_query(query_perf, conn)
-            
-            # Nếu không có dữ liệu trong performance, tính từ trading_history
-            if df_perf.empty:
-                # Lấy dữ liệu từ trading_history (bao gồm cả lệnh chưa có PnL)
-                query_trades = '''
+            df = pd.DataFrame()
+            if equity_points:
+                df = pd.DataFrame(equity_points, columns=['cycle', 'account_balance'])
+            else:
+                conn = sqlite3.connect(self.db_file)
+                
+                # Thử đọc từ bảng performance trước (nếu có)
+                query_perf = '''
                     SELECT 
                         timestamp,
-                        pnl,
-                        entry_price,
-                        quantity,
-                        side
-                    FROM trading_history
-                    WHERE entry_price > 0
+                        account_balance,
+                        total_pnl
+                    FROM performance
                     ORDER BY timestamp ASC
                 '''
-                df_trades = pd.read_sql_query(query_trades, conn)
+                df_perf = pd.read_sql_query(query_perf, conn)
                 
-                if df_trades.empty:
+                # Nếu không có dữ liệu trong performance, tính từ trading_history
+                if df_perf.empty:
+                    query_trades = '''
+                        SELECT 
+                            timestamp,
+                            pnl,
+                            entry_price,
+                            quantity,
+                            side
+                        FROM trading_history
+                        WHERE entry_price > 0
+                        ORDER BY timestamp ASC
+                    '''
+                    df_trades = pd.read_sql_query(query_trades, conn)
+                    
+                    if df_trades.empty:
+                        print("⚠️ Không có dữ liệu để vẽ biểu đồ")
+                        conn.close()
+                        return
+                    
+                    initial_balance = 10000.0
+                    df_trades['timestamp'] = pd.to_datetime(df_trades['timestamp'])
+                    df_trades = df_trades.sort_values('timestamp')
+                    
+                    if df_trades['pnl'].notna().any():
+                        df_trades['pnl_used'] = df_trades['pnl'].fillna(0)
+                    else:
+                        try:
+                            from .trade_executor import TradeExecutor
+                            temp_executor = TradeExecutor()
+                            ticker = temp_executor.client.get_symbol_ticker(symbol='BTCUSDT')
+                            current_price = float(ticker['price']) if ticker else 0.0
+                            
+                            def calc_unrealized_pnl(row):
+                                if row['side'] == 'BUY':
+                                    return (current_price - row['entry_price']) * row['quantity']
+                                else:
+                                    return (row['entry_price'] - current_price) * row['quantity']
+                            
+                            df_trades['pnl_used'] = df_trades.apply(calc_unrealized_pnl, axis=1)
+                        except:
+                            df_trades['pnl_used'] = 0.0
+                    
+                    df_trades['cumulative_pnl'] = df_trades['pnl_used'].cumsum()
+                    df_trades['account_balance'] = initial_balance + df_trades['cumulative_pnl']
+                    df_trades['total_pnl'] = df_trades['pnl_used']
+                    
+                    df = df_trades[['timestamp', 'account_balance', 'total_pnl']].copy()
+                else:
+                    df = df_perf
+                
+                conn.close()
+                
+                if df.empty:
                     print("⚠️ Không có dữ liệu để vẽ biểu đồ")
-                    conn.close()
                     return
                 
-                # Tính equity curve từ các giao dịch
-                # Giả sử số dư ban đầu là 10000 (có thể lấy từ config hoặc database)
-                initial_balance = 10000.0
-                df_trades['timestamp'] = pd.to_datetime(df_trades['timestamp'])
-                df_trades = df_trades.sort_values('timestamp')
-                
-                # Nếu có PnL, dùng PnL; nếu không, tính unrealized PnL từ entry_price và giá hiện tại
-                if df_trades['pnl'].notna().any():
-                    # Có PnL thực tế
-                    df_trades['pnl_used'] = df_trades['pnl'].fillna(0)
-                else:
-                    # Tính unrealized PnL: lấy giá hiện tại từ ticker
-                    try:
-                        from .trade_executor import TradeExecutor
-                        temp_executor = TradeExecutor()
-                        ticker = temp_executor.client.get_symbol_ticker(symbol='BTCUSDT')
-                        current_price = float(ticker['price']) if ticker else 0.0
-                        
-                        # Tính unrealized PnL
-                        def calc_unrealized_pnl(row):
-                            if row['side'] == 'BUY':
-                                return (current_price - row['entry_price']) * row['quantity']
-                            else:  # SELL
-                                return (row['entry_price'] - current_price) * row['quantity']
-                        
-                        df_trades['pnl_used'] = df_trades.apply(calc_unrealized_pnl, axis=1)
-                    except:
-                        # Nếu không lấy được giá, dùng 0
-                        df_trades['pnl_used'] = 0.0
-                
-                # Tính cumulative PnL
-                df_trades['cumulative_pnl'] = df_trades['pnl_used'].cumsum()
-                df_trades['account_balance'] = initial_balance + df_trades['cumulative_pnl']
-                df_trades['total_pnl'] = df_trades['pnl_used']
-                
-                df = df_trades[['timestamp', 'account_balance', 'total_pnl']].copy()
-            else:
-                df = df_perf
-            
-            conn.close()
+                df['timestamp'] = pd.to_datetime(df['timestamp'])
+                df = df.sort_values('timestamp')
+                if start_time:
+                    df = df[df['timestamp'] >= pd.to_datetime(start_time)]
+                    if df.empty:
+                        return
+                df['cycle'] = range(1, len(df) + 1)
             
             if df.empty:
                 print("⚠️ Không có dữ liệu để vẽ biểu đồ")
                 return
             
-            # Vẽ biểu đồ theo thứ tự chu kỳ chạy
+            if 'cycle' not in df.columns:
+                df['cycle'] = range(1, len(df) + 1)
+            
             _fig, ax1 = plt.subplots(figsize=(14, 8))
             
             if 'account_balance' in df.columns:
-                df = df.copy()
-                df['timestamp'] = pd.to_datetime(df['timestamp'])
-                df = df.sort_values('timestamp')
-                df['cycle'] = range(1, len(df) + 1)
-                ax1.plot(df['cycle'], df['account_balance'], color='green', linewidth=3)
+                ax1.plot(
+                    df['cycle'],
+                    df['account_balance'],
+                    color='#2ecc71',
+                    linewidth=3,
+                    solid_capstyle='round'
+                )
+                ax1.scatter(
+                    df['cycle'],
+                    df['account_balance'],
+                    color='#1abc9c',
+                    s=40,
+                    edgecolor='black',
+                    linewidths=0.5,
+                    zorder=3
+                )
                 ax1.set_title('📈 Đường Cong Vốn Theo Chu Kỳ', fontsize=18, fontweight='bold')
                 ax1.set_xlabel('Chu kỳ chạy bot', fontsize=14)
                 ax1.set_ylabel('Số dư tài khoản (USDT)', fontsize=14)
                 ax1.tick_params(labelsize=12)
                 ax1.grid(True, alpha=0.3)
-                ax1.fill_between(df['cycle'], df['account_balance'], alpha=0.3, color='green')
+                z = df['account_balance']
+                ax1.fill_between(df['cycle'], z, alpha=0.15, color='#2ecc71')
+                y_min = z.min() * 0.995 if not z.empty else 0
+                y_max = z.max() * 1.005 if not z.empty else 1
+                if y_min == y_max:
+                    delta = y_min * 0.01 if y_min != 0 else 1
+                    y_min -= delta
+                    y_max += delta
+                ax1.set_ylim(y_min, y_max)
             
             
             plt.tight_layout()

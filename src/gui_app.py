@@ -24,6 +24,8 @@ class TradingBotGUI:
         self.bot = trading_bot
         self.running = False
         self.cycle_count = 0
+        self.session_start_time = datetime.now()
+        self.equity_history = []
         self.chat_history = self._init_chat_history()
         self.auto_scroll_var = tk.BooleanVar(value=True)
         
@@ -242,27 +244,9 @@ class TradingBotGUI:
                                bg='#2196F3', fg='white', font=('Arial', 10, 'bold'))
         refresh_btn.pack(side=tk.LEFT, padx=5)
         
-        # Khu vực cuộn cho các thống kê
-        scroll_area = tk.Frame(report_container, bg='#2d2d2d')
-        scroll_area.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
-        
-        canvas = tk.Canvas(scroll_area, bg='#1e1e1e', highlightthickness=0)
-        scrollbar = ttk.Scrollbar(scroll_area, orient="vertical", command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas, bg='#1e1e1e')
-        
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-        
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-        
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-        
-        self.report_frame = scrollable_frame
-        self.report_canvas = canvas
+        # Khu vực tóm tắt
+        self.report_frame = tk.Frame(report_container, bg='#1e1e1e')
+        self.report_frame.pack(fill=tk.X, padx=10, pady=(5, 5))
         
         # Frame cho biểu đồ
         chart_frame = tk.LabelFrame(
@@ -273,7 +257,8 @@ class TradingBotGUI:
             font=('Arial', 10, 'bold')
         )
         # Không dùng expand để tránh khung biểu đồ phóng to bất thường khi chưa có dữ liệu
-        chart_frame.pack(fill=tk.X, expand=False, padx=10, pady=(0, 10))
+        chart_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=(0, 5))
+        chart_frame.config(height=500)
         
         self.chart_frame = chart_frame
         
@@ -324,6 +309,8 @@ class TradingBotGUI:
         if not confirm:
             return
         
+        self.session_start_time = datetime.now()
+        self.equity_history = []
         self.running = True
         self.start_btn.config(state='disabled')
         self.stop_btn.config(state='normal')
@@ -390,8 +377,11 @@ class TradingBotGUI:
                     self.update_info_from_result(result)
                     # Sinh báo cáo sau mỗi chu kỳ
                     try:
-                        self.bot.reporting.generate_summary_report()
-                        self.bot.reporting.plot_equity_curve()
+                        summary = self.bot.reporting.generate_summary_report()
+                        if summary:
+                            balance = summary.get('account_balance', 0)
+                            self.equity_history.append((self.cycle_count, balance))
+                        self.bot.reporting.plot_equity_curve(equity_points=self.equity_history)
                         self.bot.reporting.export_html_report()
                         self.log(f"📄 Đã cập nhật báo cáo: {config.REPORT_HTML_FILE}, {config.EQUITY_CURVE_FILE}")
                         # Cập nhật báo cáo trên GUI
@@ -470,14 +460,9 @@ class TradingBotGUI:
                            font=('Arial', 14, 'bold'))
             title.pack(pady=10)
             
-            # Tạo frame cho các thống kê
-            stats_container = tk.Frame(self.report_frame, bg='#1e1e1e')
-            stats_container.pack(fill=tk.X, padx=20, pady=10)
-            
-            # Hiển thị từng thống kê
             stats = [
                 ("💰 Số dư tài khoản", f"${report.get('account_balance', 0):.2f}", '#00ff00'),
-                ("📈 Tổng PnL", f"${report.get('total_pnl', 0):.2f}", 
+                ("📈 Tổng PnL", f"${report.get('total_pnl', 0):.2f}",
                  '#00ff00' if report.get('total_pnl', 0) >= 0 else '#ff0000'),
                 ("📊 Tỷ suất sinh lời", f"{report.get('return_percent', 0):.2f}%",
                  '#00ff00' if report.get('return_percent', 0) >= 0 else '#ff0000'),
@@ -488,26 +473,31 @@ class TradingBotGUI:
                 ("⚖️ Profit Factor", f"{report.get('profit_factor', 0):.2f}", '#ffffff'),
             ]
             
-            for i, (label, value, color) in enumerate(stats):
-                row = i // 4
-                col = i % 4
-                stat_frame = tk.Frame(stats_container, bg='#2d2d2d', relief=tk.RAISED, bd=2)
-                stat_frame.grid(row=row, column=col, padx=8, pady=5, sticky='nsew')
-                stats_container.grid_columnconfigure(col, weight=1)
+            summary_row = tk.Frame(self.report_frame, bg='#1e1e1e')
+            summary_row.pack(fill=tk.X, padx=10, pady=5)
+            
+            for label, value, color in stats:
+                stat_frame = tk.Frame(summary_row, bg='#2d2d2d', relief=tk.RAISED, bd=2)
+                stat_frame.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=4, pady=2)
                 
-                label_widget = tk.Label(stat_frame, text=label, 
-                                       bg='#2d2d2d', fg='#aaaaaa',
-                                       font=('Arial', 9))
+                label_widget = tk.Label(
+                    stat_frame,
+                    text=label,
+                    bg='#2d2d2d',
+                    fg='#aaaaaa',
+                    font=('Arial', 9)
+                )
                 label_widget.pack(pady=(6, 2))
                 
-                value_widget = tk.Label(stat_frame, text=value,
-                                       bg='#2d2d2d', fg=color,
-                                       font=('Arial', 16, 'bold'))
+                value_widget = tk.Label(
+                    stat_frame,
+                    text=value,
+                    bg='#2d2d2d',
+                    fg=color,
+                    font=('Arial', 16, 'bold')
+                )
                 value_widget.pack(pady=(0, 6))
             
-            # Cập nhật canvas scroll và biểu đồ
-            self.report_canvas.update_idletasks()
-            self.report_canvas.configure(scrollregion=self.report_canvas.bbox("all"))
             self.update_chart()
         
             # Cập nhật stats ở dưới (nếu đã khởi tạo)
@@ -571,28 +561,30 @@ class TradingBotGUI:
             for widget in self.chart_frame.winfo_children():
                 widget.destroy()
             
-            # Kiểm tra file biểu đồ
             chart_file = config.EQUITY_CURVE_FILE
-            if os.path.exists(chart_file):
-                self._render_chart_image(chart_file)
-            else:
-                # Nếu chưa có biểu đồ, tạo từ dữ liệu
-                try:
-                    self.bot.reporting.plot_equity_curve()
-                    if os.path.exists(chart_file):
-                        self._render_chart_image(chart_file)
-                    else:
-                        no_data_label = tk.Label(self.chart_frame,
-                                               text="⚠️ Chưa có dữ liệu để vẽ biểu đồ\nHãy chạy bot ít nhất một chu kỳ",
-                                               bg='#2d2d2d', fg='#ffff00',
-                                               font=('Arial', 12))
-                        no_data_label.pack(pady=20)
-                except Exception as e:
-                    no_data_label = tk.Label(self.chart_frame,
-                                           text=f"⚠️ Không thể tạo biểu đồ: {e}",
-                                           bg='#2d2d2d', fg='#ff0000',
-                                           font=('Arial', 12))
+            try:
+                if not os.path.exists(chart_file) or not self.equity_history:
+                    self.bot.reporting.plot_equity_curve(equity_points=self.equity_history)
+                if os.path.exists(chart_file):
+                    self._render_chart_image(chart_file)
+                else:
+                    no_data_label = tk.Label(
+                        self.chart_frame,
+                        text="⚠️ Chưa có dữ liệu để vẽ biểu đồ\nHãy chạy bot ít nhất một chu kỳ",
+                        bg='#2d2d2d',
+                        fg='#ffff00',
+                        font=('Arial', 12)
+                    )
                     no_data_label.pack(pady=20)
+            except Exception as e:
+                no_data_label = tk.Label(
+                    self.chart_frame,
+                    text=f"⚠️ Không thể tạo biểu đồ: {e}",
+                    bg='#2d2d2d',
+                    fg='#ff0000',
+                    font=('Arial', 12)
+                )
+                no_data_label.pack(pady=20)
         except ImportError:
             # Nếu không có PIL, hiển thị thông báo
             no_pil_label = tk.Label(self.chart_frame,
@@ -614,11 +606,8 @@ class TradingBotGUI:
         
         # Đảm bảo khung đã cập nhật kích thước trước khi lấy width
         self.chart_frame.update_idletasks()
-        self.report_canvas.update_idletasks()
         
         available_width = self.chart_frame.winfo_width()
-        if available_width <= 0:
-            available_width = self.report_canvas.winfo_width()
         if available_width <= 0:
             available_width = config.REPORT_CHART_MAX_WIDTH
         available_width = max(0, available_width - 40)  # trừ padding khi có
@@ -630,6 +619,8 @@ class TradingBotGUI:
         aspect_ratio = img.width / img.height if img.height else 1
         target_height = int(target_width / aspect_ratio) if aspect_ratio else config.REPORT_CHART_MAX_HEIGHT
         
+        max_height = getattr(config, 'REPORT_CHART_TARGET_HEIGHT', config.REPORT_CHART_MAX_HEIGHT)
+        target_height = min(target_height, max_height)
         if target_height > config.REPORT_CHART_MAX_HEIGHT:
             target_height = config.REPORT_CHART_MAX_HEIGHT
             target_width = int(target_height * aspect_ratio) if aspect_ratio else target_width
