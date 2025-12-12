@@ -302,8 +302,8 @@ $\rightarrow$ Bot thực thi lệnh với Stop Loss = 2$\times$ATR
     
     \item \textbf{Ứng dụng trong bot}:
     \begin{itemize}
-        \item RSI > 70 hiểu như trạng thái ``đã có quá nhiều người mua'' $\rightarrow$ cầu suy yếu $\rightarrow$ rủi ro đảo chiều tăng.
-        \item RSI < 30 hiểu như ``đã có quá nhiều người bán'' $\rightarrow$ áp lực cung suy yếu $\rightarrow$ dễ phục hồi.
+        \item RSI > 70 hiểu như trạng thái ``đã có quá nhiều người mua'' $\rightarrow$ cầu suy yếu $\rightarrow$ rủi ro đảo chiều tăng $\rightarrow$ Bot không giao dịch.
+        \item RSI < 30 hiểu như ``đã có quá nhiều người bán'' $\rightarrow$ áp lực cung suy yếu $\rightarrow$ dễ phục hồi, nhưng bot vẫn cần kiểm tra điều kiện khác (confidence $\geq$ 50\%, ATR/giá $\leq$ 25\%).
     \end{itemize}
     
     \item \textbf{Kỳ vọng \& EMH (Efficient Market Hypothesis)}: Bot phản ứng theo dữ liệu gần nhất (RSI/MA/ATR) tương ứng giả định thị trường hiệu quả mức ``yếu'' (giá phản ánh dữ liệu quá khứ), nên vẫn còn chỗ cho chiến lược phản ứng nhanh.
@@ -359,10 +359,11 @@ $\rightarrow$ Bot thực thi lệnh với Stop Loss = 2$\times$ATR
 \begin{itemize}
     \item Bot kiểm tra điều kiện:
     \begin{itemize}
-        \item Chặn giao dịch nếu RSI > 75 (quá mua)
-        \item Chặn nếu biến động quá cao: ATR/giá > 5\%
+        \item Chặn giao dịch nếu RSI > 70 (quá mua)
+        \item Chặn nếu biến động quá cao: ATR/giá > 25\%
+        \item Chặn nếu độ tin cậy của AI < 50\% (confidence threshold)
     \end{itemize}
-    \item Khi RSI > 70 hoặc ATR/giá > 5\% $\rightarrow$ Bot \textbf{tự động từ chối} giao dịch
+    \item Khi RSI > 70 hoặc ATR/giá > 25\% hoặc confidence < 50\% $\rightarrow$ Bot \textbf{tự động từ chối} giao dịch
     \item \textbf{Kết quả:} Bot không bao giờ mua đuổi ở đỉnh, tránh được FOMO
 \end{itemize}
 
@@ -385,8 +386,8 @@ $\rightarrow$ Bot thực thi lệnh với Stop Loss = 2$\times$ATR
 \begin{itemize}
     \item Bot nhận diện ``bầy đàn'' qua:
     \begin{itemize}
-        \item RSI cực cao (>75) $\rightarrow$ Nhiều người đã mua
-        \item Biến động cao (ATR/giá > 5\%) $\rightarrow$ Thị trường không ổn định
+        \item RSI cực cao (>70) $\rightarrow$ Nhiều người đã mua
+        \item Biến động cao (ATR/giá > 25\%) $\rightarrow$ Thị trường không ổn định
     \end{itemize}
     \item Bot \textbf{không giao dịch} khi phát hiện tín hiệu này
     \item \textbf{Kết quả:} Bot tránh được ``bẫy đám đông'', giao dịch ngược lại khi thị trường quá cực
@@ -494,6 +495,69 @@ $\rightarrow$ Bot thực thi lệnh với Stop Loss = 2$\times$ATR
     \item \textbf{Quy tắc:} Chỉ vào lệnh nếu R/R $\geq$ 1.5
 \end{itemize}
 
+\subsubsection{Tính số dư tài khoản thực tế}
+
+\textbf{Công thức:}
+\begin{equation}
+\text{Account Balance} = \text{USDT Balance} + (\text{BTC Balance} \times \text{Current BTC Price})
+\end{equation}
+
+\textbf{Ví dụ:}
+\begin{itemize}
+    \item USDT trong ví: \$5,000
+    \item BTC trong ví: 0.1 BTC
+    \item Giá BTC hiện tại: \$40,000
+\end{itemize}
+
+\begin{align}
+\text{Account Balance} &= \$5,000 + (0.1 \times \$40,000)\\
+&= \$5,000 + \$4,000 = \$9,000
+\end{align}
+
+\textbf{Ý nghĩa:}
+\begin{itemize}
+    \item Phản ánh giá trị thực tế của tài khoản tại thời điểm hiện tại
+    \item Bao gồm cả tiền mặt (USDT) và tài sản crypto (BTC)
+    \item Được cập nhật từ Binance API sau mỗi chu kỳ
+    \item Nếu không lấy được từ API, bot sẽ tính từ PnL: $\text{Balance} = \text{Initial Balance} + \text{Total PnL}$
+\end{itemize}
+
+\subsubsection{Realized PnL vs Unrealized PnL}
+
+\textbf{Realized PnL (Lợi nhuận đã thực hiện):}
+\begin{itemize}
+    \item Lợi nhuận từ các lệnh đã đóng hoàn toàn
+    \item Đã được ``khóa'' và không thể thay đổi
+    \item Công thức: $\text{PnL} = (\text{Exit Price} - \text{Entry Price}) \times \text{Quantity}$
+\end{itemize}
+
+\textbf{Unrealized PnL (Lợi nhuận chưa thực hiện):}
+\begin{itemize}
+    \item Lợi nhuận tiềm năng từ các lệnh đang mở
+    \item Tính theo giá hiện tại, có thể thay đổi
+    \item Công thức: $\text{Unrealized} = (\text{Current Price} - \text{Entry Price}) \times \text{Quantity}$
+\end{itemize}
+
+\textbf{Ví dụ:}
+\begin{itemize}
+    \item Đã mua BTC ở \$40,000, đã bán ở \$42,000 $\rightarrow$ Realized PnL = +\$2,000
+    \item Đang giữ BTC mua ở \$40,000, giá hiện tại \$41,000 $\rightarrow$ Unrealized PnL = +\$1,000
+    \item Nếu giá giảm xuống \$39,000 $\rightarrow$ Unrealized PnL = -\$1,000
+\end{itemize}
+
+\textbf{Total PnL:}
+\begin{equation}
+\text{Total PnL} = \text{Realized PnL} + \text{Unrealized PnL}
+\end{equation}
+
+\textbf{Ý nghĩa trong bot:}
+\begin{itemize}
+    \item Bot tính toán cả Realized và Unrealized PnL để đánh giá hiệu suất tổng thể
+    \item Realized PnL phản ánh lợi nhuận thực tế đã đạt được
+    \item Unrealized PnL cho biết giá trị hiện tại của các vị thế đang mở
+    \item Cả hai được hiển thị trong báo cáo hiệu suất
+\end{itemize}
+
 \subsubsection{Kelly Criterion (Tiêu chí Kelly - Nâng cao)}
 
 \textbf{Định nghĩa:} Công thức toán học tính tỷ lệ vốn tối ưu dựa trên xác suất thắng và R/R ratio.
@@ -565,9 +629,9 @@ Thị trường crypto trải qua các giai đoạn tâm lý lặp đi lặp l�
 \begin{enumerate}
     \item \textbf{Tích luỹ (Accumulation)}
     \begin{itemize}
-        \item RSI thấp (20-30), giá ổn định
+        \item RSI thấp (<30), giá ổn định
         \item Ít người quan tâm
-        \item Bot: Có thể mua (cơ hội tốt)
+        \item Bot: Có thể mua (cơ hội tốt) - nhưng cần kiểm tra điều kiện khác (confidence $\geq$ 50\%, ATR/giá $\leq$ 25\%)
     \end{itemize}
     
     \item \textbf{Hoài nghi (Disbelief)}
@@ -586,7 +650,7 @@ Thị trường crypto trải qua các giai đoạn tâm lý lặp đi lặp l�
     
     \item \textbf{Hưng phấn (Euphoria)} \textcolor{warning}{⚠️}
     \begin{itemize}
-        \item RSI rất cao (>75)
+        \item RSI rất cao (>70)
         \item Giá tăng mạnh, mọi người FOMO
         \item Bot: KHÔNG GIAO DỊCH (quá nguy hiểm)
     \end{itemize}
@@ -594,8 +658,8 @@ Thị trường crypto trải qua các giai đoạn tâm lý lặp đi lặp l�
     \item \textbf{Hoảng loạn (Panic)}
     \begin{itemize}
         \item Giá giảm mạnh
-        \item RSI rất thấp (<25)
-        \item Bot: Cân nhắc mua (cơ hội hồi phục)
+        \item RSI rất thấp (<30)
+        \item Bot: KHÔNG GIAO DỊCH ngay (cần chờ tín hiệu rõ ràng hơn, kiểm tra confidence và ATR)
     \end{itemize}
     
     \item \textbf{Trầm cảm (Depression)}
@@ -608,14 +672,14 @@ Thị trường crypto trải qua các giai đoạn tâm lý lặp đi lặp l�
 
 \textbf{Bot nhận diện chu kỳ như thế nào:}
 \begin{itemize}
-    \item Nếu RSI > 75: ``RSI quá cao - Thị trường quá mua (Hưng phấn)'' $\rightarrow$ Không giao dịch
-    \item Nếu RSI < 25: ``RSI quá thấp - Thị trường quá bán (Hoảng loạn)'' $\rightarrow$ Không giao dịch
+    \item Nếu RSI > 70: ``RSI quá cao - Thị trường quá mua (Hưng phấn)'' $\rightarrow$ Không giao dịch
+    \item Nếu RSI < 30: ``RSI quá thấp - Thị trường quá bán (Hoảng loạn)'' $\rightarrow$ Không giao dịch
 \end{itemize}
 
 \textbf{Ví dụ thực tế:}
 \begin{itemize}
     \item Tình huống: BTC tăng từ \$40k $\rightarrow$ \$50k trong 1 tuần
-    \item RSI: 78 (quá mua)
+    \item RSI: 72 (quá mua)
     \item ATR: \$800 (biến động cao)
     \item $\rightarrow$ Bot nhận diện: ``Hưng phấn'' - Giai đoạn nguy hiểm
     \item $\rightarrow$ Bot: KHÔNG GIAO DỊCH
@@ -633,9 +697,9 @@ Thị trường crypto trải qua các giai đoạn tâm lý lặp đi lặp l�
 \midrule
 \textbf{Loss Aversion} & Stop Loss cứng, tự động cắt lỗ & SL = Entry - 2$\times$ATR \\
 \midrule
-\textbf{FOMO} & Chặn giao dịch khi RSI > 75 hoặc ATR/giá > 5\% & RSI = 78 $\rightarrow$ Không giao dịch \\
+\textbf{FOMO} & Chặn giao dịch khi RSI > 70 hoặc ATR/giá > 25\% & RSI = 72 $\rightarrow$ Không giao dịch \\
 \midrule
-\textbf{Herding} & Nhận diện cực trị qua RSI + ATR & RSI cao + ATR cao $\rightarrow$ Bỏ qua \\
+\textbf{Herding} & Nhận diện cực trị qua RSI + ATR & RSI > 70 + ATR/giá > 25\% $\rightarrow$ Bỏ qua \\
 \midrule
 \textbf{Anchoring} & Mỗi chu kỳ phân tích lại từ đầu & Không nhớ giá cũ \\
 \midrule
@@ -647,7 +711,7 @@ Thị trường crypto trải qua các giai đoạn tâm lý lặp đi lặp l�
 \midrule
 \textbf{Volatility (ATR)} & Điều chỉnh SL/TP linh hoạt theo ATR & SL = 2$\times$ATR, TP = 3$\times$ATR \\
 \midrule
-\textbf{Chu kỳ tâm lý} & Nhận diện vùng cực trị (RSI > 75 hoặc < 25) & RSI = 78 $\rightarrow$ ``Hưng phấn'' $\rightarrow$ Không giao dịch \\
+\textbf{Chu kỳ tâm lý} & Nhận diện vùng cực trị (RSI > 70 hoặc < 30) & RSI = 72 $\rightarrow$ ``Hưng phấn'' $\rightarrow$ Không giao dịch \\
 \bottomrule
 \end{longtable}
 
@@ -660,7 +724,7 @@ Sau khi khởi động hệ thống, bạn sẽ thấy menu chọn:
 \begin{itemize}
     \item \textbf{Chế độ 0: Chạy với GIAO DIỆN GUI} - Giao diện đồ họa với các nút điều khiển
     \item \textbf{Chế độ 1: Chạy MỘT LẦN} - Phân tích và dừng
-    \item \textbf{Chế độ 2: Chạy LIÊN TỤC} - Tự động mỗi 15 phút
+    \item \textbf{Chế độ 2: Chạy LIÊN TỤC} - Tự động mỗi 5 phút
     \item \textbf{Chế độ 3: Chạy DEMO} - Chỉ phân tích, không giao dịch
     \item \textbf{Chế độ 4: Xem BÁO CÁO} - Hiệu suất giao dịch (HTML + biểu đồ)
 \end{itemize}
@@ -693,9 +757,20 @@ Sau khi khởi động hệ thống, bạn sẽ thấy menu chọn:
     \item Tính chỉ báo kỹ thuật (MA, RSI, ATR)
     \item ChatGPT AI phân tích thị trường
     \item Quản lý rủi ro tự động (Risk Manager)
+    \begin{itemize}
+        \item RSI threshold: > 70 (quá mua) hoặc < 30 (quá bán)
+        \item Confidence threshold: $\geq$ 50\%
+        \item ATR volatility threshold: > 25\% giá
+    \end{itemize}
     \item Database và logging chi tiết
     \item Báo cáo hiệu suất và biểu đồ vốn
+    \begin{itemize}
+        \item Equity curve với X-axis là chu kỳ (cycle)
+        \item Tính Realized và Unrealized PnL
+        \item Account balance từ Binance API
+    \end{itemize}
     \item Auto trading với stop loss/take profit
+    \item Chu kỳ phân tích: 5 phút (có thể điều chỉnh)
 \end{itemize}
 
 \section{Lỗi Thường Gặp}
