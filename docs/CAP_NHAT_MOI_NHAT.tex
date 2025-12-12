@@ -1,0 +1,259 @@
+% -*- coding: utf-8 -*-
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[vietnamese]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\geometry{margin=2.3cm}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Cập Nhật Mới Nhất}
+\fancyhead[R]{Trading Bot - Testnet}
+\fancyfoot[C]{\thepage}
+
+\title{\textbf{Cập Nhật Mới Nhất - Trading Bot}\\
+\large Cải Thiện Giao Diện \& Backend}
+\author{}
+\date{\today}
+
+% Cấu hình cho code blocks
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{green!60!black},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=5pt,
+    backgroundcolor=\color{gray!10},
+    frame=single,
+    breaklines=true,
+    breakatwhitespace=true,
+    tabsize=2
+}
+
+\begin{document}
+
+\maketitle
+
+\section*{Tổng Quan}
+Tài liệu này tổng hợp các cập nhật mới nhất cho hệ thống Trading Bot, bao gồm cải thiện giao diện người dùng và tối ưu hóa backend. Tất cả các thay đổi đều đã được kiểm tra và tích hợp vào codebase.
+
+\section{Cải Thiện Giao Diện (GUI)}
+
+\subsection{1. Điều Khiển Biểu Đồ Theo Chu Kỳ}
+\textbf{Mục đích:} Cho phép người dùng chọn số chu kỳ hiển thị trên biểu đồ để tập trung vào dữ liệu gần nhất.
+
+\textbf{Thay đổi:}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Thêm combobox ``Hiển thị'' với các tùy chọn: All, 30, 50, 100 chu kỳ
+    \item Biểu đồ tự động cập nhật khi người dùng chọn số chu kỳ khác
+    \item Thêm label ``Cập nhật: HH:MM:SS'' dưới biểu đồ để hiển thị thời gian render mới nhất
+\end{itemize}
+
+\textbf{Vị trí code:}
+\begin{itemize}[leftmargin=0.5cm]
+    \item \texttt{src/gui\_app.py}: Hàm \texttt{setup\_report\_tab()}, \texttt{update\_chart()}
+    \item \texttt{src/reporting\_monitoring.py}: Hàm \texttt{plot\_equity\_curve()} nhận tham số \texttt{cycle\_limit}
+\end{itemize}
+
+\subsection{2. Tự Động Làm Mới Báo Cáo}
+\textbf{Mục đích:} Tự động refresh báo cáo theo chu kỳ định kỳ mà không cần người dùng bấm nút.
+
+\textbf{Thay đổi:}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Thêm checkbox ``Auto refresh báo cáo'' với ô nhập số phút
+    \item Khi bật, hệ thống tự động gọi \texttt{refresh\_report()} sau mỗi N phút
+    \item Tự động dừng khi bot dừng hoặc người dùng tắt checkbox
+\end{itemize}
+
+\textbf{Vị trí code:}
+\begin{itemize}[leftmargin=0.5cm]
+    \item \texttt{src/gui\_app.py}: Hàm \texttt{setup\_report\_tab()}, \texttt{start\_auto\_refresh()}, \texttt{stop\_auto\_refresh()}
+\end{itemize}
+
+\subsection{3. Marker BUY/SELL Trên Biểu Đồ}
+\textbf{Mục đích:} Hiển thị rõ ràng các điểm vào/ra lệnh trên đường cong vốn để phân tích hiệu quả.
+
+\textbf{Thay đổi:}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Thêm marker tam giác xanh cho lệnh BUY, tam giác đỏ cho lệnh SELL
+    \item Hiển thị số chu kỳ ngay trên marker để dễ theo dõi
+    \item Marker được vẽ dựa trên dữ liệu từ \texttt{equity\_history} trong GUI
+\end{itemize}
+
+\textbf{Vị trí code:}
+\begin{itemize}[leftmargin=0.5cm]
+    \item \texttt{src/reporting\_monitoring.py}: Hàm \texttt{plot\_equity\_curve()} với tham số \texttt{trade\_markers}
+    \item \texttt{src/gui\_app.py}: Hàm \texttt{update\_chart()} truyền dữ liệu marker vào biểu đồ
+\end{itemize}
+
+\subsection{4. Badge Trạng Thái API}
+\textbf{Mục đích:} Hiển thị trạng thái kết nối Binance và OpenAI ngay trên header để người dùng biết ngay hệ thống có sẵn sàng không.
+
+\textbf{Thay đổi:}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Thêm badge ``Binance: OK/Lỗi'' và ``OpenAI: OK/Lỗi'' trên header
+    \item Màu xanh khi kết nối thành công, màu đỏ khi có lỗi
+    \item Tự động kiểm tra khi khởi động GUI và khi bấm ``BẮT ĐẦU''
+\end{itemize}
+
+\textbf{Vị trí code:}
+\begin{itemize}[leftmargin=0.5cm]
+    \item \texttt{src/gui\_app.py}: Hàm \texttt{setup\_gui()}, \texttt{check\_api\_status()}, \texttt{update\_api\_badges()}
+\end{itemize}
+
+\subsection{5. Lọc Log Theo Mức Độ}
+\textbf{Mục đích:} Giúp người dùng dễ dàng tìm kiếm log theo mức độ (Info, Warning, Error, Success).
+
+\textbf{Thay đổi:}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Thêm combobox ``Lọc log'' với các tùy chọn: All, Info, Warning, Error, Success
+    \item Log được lưu vào bộ nhớ và render lại theo bộ lọc đã chọn
+    \item Giữ nguyên tính năng auto-scroll và xóa log
+\end{itemize}
+
+\textbf{Vị trí code:}
+\begin{itemize}[leftmargin=0.5cm]
+    \item \texttt{src/gui\_app.py}: Hàm \texttt{setup\_logs\_tab()}, \texttt{filter\_logs()}, \texttt{log()}
+\end{itemize}
+
+\section{Cải Thiện Backend}
+
+\subsection{1. Lưu Lịch Sử Equity Theo Chu Kỳ}
+\textbf{Mục đích:} Theo dõi đường cong vốn theo từng chu kỳ chạy bot trong phiên hiện tại.
+
+\textbf{Thay đổi:}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Thêm \texttt{equity\_history} trong \texttt{TradingBotGUI} để lưu (cycle, balance) mỗi chu kỳ
+    \item Mỗi khi bot hoàn thành chu kỳ, cập nhật \texttt{equity\_history} với số dư mới nhất
+    \item Reset khi người dùng nhấn ``BẮT ĐẦU'' lần mới
+\end{itemize}
+
+\textbf{Vị trí code:}
+\begin{itemize}[leftmargin=0.5cm]
+    \item \texttt{src/gui\_app.py}: \texttt{\_\_init\_\_()}, \texttt{run\_bot\_continuous()}, \texttt{update\_chart()}
+\end{itemize}
+
+\subsection{2. Biểu Đồ Theo Chu Kỳ Thay Vì Ngày}
+\textbf{Mục đích:} Trục X hiển thị số chu kỳ (1, 2, 3...) thay vì timestamp để dễ theo dõi tiến trình bot.
+
+\textbf{Thay đổi:}
+\begin{itemize}[leftmargin=0.5cm]
+    \item \texttt{plot\_equity\_curve()} nhận tham số \texttt{start\_time} để lọc dữ liệu từ phiên hiện tại
+    \item Tính toán \texttt{cycle = range(1, len(df) + 1)} để đánh số chu kỳ liên tục
+    \item Trục X hiển thị ``Chu kỳ chạy bot'' thay vì ``Thời gian''
+\end{itemize}
+
+\textbf{Vị trí code:}
+\begin{itemize}[leftmargin=0.5cm]
+    \item \texttt{src/reporting\_monitoring.py}: Hàm \texttt{plot\_equity\_curve()}
+    \item \texttt{src/gui\_app.py}: Hàm \texttt{update\_chart()} truyền \texttt{session\_start\_time}
+\end{itemize}
+
+\subsection{3. Marker Trade Trên Biểu Đồ}
+\textbf{Mục đích:} Đánh dấu các điểm BUY/SELL trên đường cong vốn để phân tích tác động của từng lệnh.
+
+\textbf{Thay đổi:}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Lưu thông tin trade (cycle, side, price) vào \texttt{equity\_history} khi có lệnh thực thi
+    \item \texttt{plot\_equity\_curve()} nhận tham số \texttt{trade\_markers} để vẽ marker
+    \item Marker BUY: tam giác xanh lên, Marker SELL: tam giác đỏ xuống
+    \item Hiển thị số chu kỳ trên marker để dễ theo dõi
+\end{itemize}
+
+\textbf{Vị trí code:}
+\begin{itemize}[leftmargin=0.5cm]
+    \item \texttt{src/reporting\_monitoring.py}: Hàm \texttt{plot\_equity\_curve()} với logic vẽ marker
+    \item \texttt{src/gui\_app.py}: Hàm \texttt{run\_bot\_continuous()} lưu trade info vào \texttt{equity\_history}
+\end{itemize}
+
+\subsection{4. Tối Ưu Hiển Thị Biểu Đồ}
+\textbf{Mục đích:} Biểu đồ rõ ràng hơn, không bị phóng to bất thường khi chưa có dữ liệu.
+
+\textbf{Thay đổi:}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Thêm \texttt{REPORT\_CHART\_TARGET\_HEIGHT} trong \texttt{config.py} (mặc định 480px)
+    \item \texttt{\_render\_chart\_image()} clamp chiều cao ảnh theo \texttt{TARGET\_HEIGHT}
+    \item Bỏ \texttt{expand=True} cho phần báo cáo, chỉ để cho biểu đồ
+    \item Thống kê hiển thị trên 1 hàng để tiết kiệm không gian
+\end{itemize}
+
+\textbf{Vị trí code:}
+\begin{itemize}[leftmargin=0.5cm]
+    \item \texttt{src/config.py}: Thêm \texttt{REPORT\_CHART\_TARGET\_HEIGHT}
+    \item \texttt{src/gui\_app.py}: Hàm \texttt{setup\_report\_tab()}, \texttt{\_render\_chart\_image()}
+\end{itemize}
+
+\section{Đề Xuất Cải Tiến Tiếp Theo (Chưa Triển Khai)}
+
+\subsection{Backend}
+\begin{enumerate}[leftmargin=0.5cm]
+    \item \textbf{Ràng buộc R/R tối thiểu:} Thêm \texttt{MIN\_RISK\_REWARD\_RATIO} trong config, chặn lệnh nếu R/R < ngưỡng
+    \item \textbf{Dry-run mode:} Flag \texttt{DRY\_RUN} để test không gửi lệnh thật, vẫn log và ghi DB
+    \item \textbf{Health check API:} Hàm \texttt{ping()} kiểm tra Binance/OpenAI trước khi chạy bot
+    \item \textbf{Xuất CSV chu kỳ:} Append dòng CSV sau mỗi chu kỳ để phân tích ngoài
+    \item \textbf{Max Drawdown:} Tính và hiển thị mức sụt vốn tối đa trong báo cáo
+    \item \textbf{Trailing stop:} Tự động điều chỉnh stop loss khi lệnh đang lời (nếu mở rộng)
+\end{enumerate}
+
+\subsection{Giao Diện}
+\begin{enumerate}[leftmargin=0.5cm]
+    \item \textbf{Tooltip marker:} Hiển thị giá/PnL khi hover vào marker BUY/SELL
+    \item \textbf{Export CSV:} Nút xuất dữ liệu equity history ra CSV
+    \item \textbf{Ẩn/hiện thống kê:} Toggle để tập trung vào biểu đồ khi trình chiếu
+    \item \textbf{Lưu ảnh biểu đồ:} Nút chụp PNG biểu đồ để gửi báo cáo
+    \item \textbf{Độ tương phản:} Tăng độ đậm trục/nhãn biểu đồ để dễ đọc hơn
+\end{enumerate}
+
+\section{Cấu Trúc File Đã Thay Đổi}
+
+\subsection{src/gui\_app.py}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Thêm biến: \texttt{equity\_history}, \texttt{auto\_refresh\_var}, \texttt{cycle\_window\_var}
+    \item Thêm hàm: \texttt{check\_api\_status()}, \texttt{update\_api\_badges()}, \texttt{filter\_logs()}, \texttt{start\_auto\_refresh()}, \texttt{stop\_auto\_refresh()}
+    \item Sửa hàm: \texttt{setup\_gui()}, \texttt{setup\_report\_tab()}, \texttt{setup\_logs\_tab()}, \texttt{update\_chart()}, \texttt{run\_bot\_continuous()}, \texttt{log()}
+\end{itemize}
+
+\subsection{src/reporting\_monitoring.py}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Sửa hàm: \texttt{plot\_equity\_curve()} nhận tham số \texttt{start\_time}, \texttt{cycle\_limit}, \texttt{trade\_markers}, \texttt{equity\_points}
+    \item Thêm logic: Tính cycle từ 1, vẽ marker BUY/SELL, clamp chiều cao biểu đồ
+\end{itemize}
+
+\subsection{src/config.py}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Thêm: \texttt{REPORT\_CHART\_TARGET\_HEIGHT = 480}
+\end{itemize}
+
+\section{Hướng Dẫn Sử Dụng}
+
+\subsection{Các Tính Năng Mới}
+\begin{enumerate}[leftmargin=0.5cm]
+    \item \textbf{Chọn số chu kỳ hiển thị:} Vào tab Báo Cáo, chọn số chu kỳ từ combobox ``Hiển thị'', nhấn ``Làm mới báo cáo''
+    \item \textbf{Auto refresh:} Bật checkbox ``Auto refresh báo cáo'', nhập số phút, hệ thống tự động cập nhật
+    \item \textbf{Lọc log:} Vào tab Logs, chọn mức độ từ combobox ``Lọc log''
+    \item \textbf{Xem trạng thái API:} Quan sát badge trên header (xanh = OK, đỏ = Lỗi)
+    \item \textbf{Phân tích marker:} Xem marker tam giác trên biểu đồ để biết điểm BUY/SELL
+\end{enumerate}
+
+\section{Kết Luận}
+Các cập nhật mới nhất tập trung vào cải thiện trải nghiệm người dùng và tối ưu hóa hiển thị dữ liệu. Tất cả các thay đổi đều đã được kiểm tra và tích hợp vào codebase. Hệ thống hiện tại hỗ trợ tốt hơn việc theo dõi và phân tích hiệu suất bot theo từng chu kỳ.
+
+\vspace{0.5cm}
+\begin{center}
+\textbf{Cập nhật lần cuối: \today}
+\end{center}
+
+\end{document}
+

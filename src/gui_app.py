@@ -39,6 +39,9 @@ class TradingBotGUI:
         }
         self._auto_refresh_job = None
         
+        # Đăng ký callback để bot log vào GUI khi thực thi lệnh
+        self.bot.gui_log_callback = self.log
+        
         self.setup_gui()
     
     def setup_gui(self):
@@ -485,6 +488,29 @@ class TradingBotGUI:
                 
                 if result:
                     self.update_info_from_result(result)
+                    
+                    # Cập nhật số dư ngay sau khi có lệnh thành công
+                    executed = result.get('executed', False)
+                    if executed:
+                        try:
+                            # Lấy số dư thực tế từ Binance API ngay lập tức
+                            balances = self.bot.executor.get_account_balance()
+                            usdt_balance = balances.get('USDT', 0)
+                            btc_balance = balances.get('BTC', 0)
+                            
+                            # Lấy giá BTC hiện tại
+                            try:
+                                ticker = self.bot.executor.client.get_symbol_ticker(symbol='BTCUSDT')
+                                btc_price = float(ticker['price']) if ticker else 0.0
+                                account_balance = usdt_balance + (btc_balance * btc_price)
+                            except:
+                                account_balance = usdt_balance
+                            
+                            if account_balance > 0:
+                                self.log(f"💰 Số dư hiện tại: ${account_balance:.2f} (USDT: ${usdt_balance:.2f}, BTC: {btc_balance:.6f})")
+                        except Exception as e:
+                            self.log(f"⚠️ Lỗi lấy số dư: {e}")
+                    
                     # Sinh báo cáo sau mỗi chu kỳ
                     try:
                         summary = self.bot.reporting.generate_summary_report()

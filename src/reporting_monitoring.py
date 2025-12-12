@@ -124,14 +124,67 @@ class ReportingMonitoring:
                 win_rate = 0
                 profit_factor = 0
             
-            # Lấy số dư tài khoản mới nhất
-            cursor.execute('''
-                SELECT account_balance FROM performance
-                ORDER BY timestamp DESC LIMIT 1
-            ''')
+            # Lấy số dư thực tế từ Binance API (chính xác nhất)
+            try:
+                from .trade_executor import TradeExecutor
+                temp_executor = TradeExecutor()
+                balances = temp_executor.get_account_balance()
+                
+                # Tính tổng giá trị tài khoản (USDT + BTC*giá hiện tại)
+                usdt_balance = balances.get('USDT', 0)
+                btc_balance = balances.get('BTC', 0)
+                
+                # Lấy giá BTC hiện tại
+                if btc_balance > 0:
+                    try:
+                        ticker = temp_executor.client.get_symbol_ticker(symbol='BTCUSDT')
+                        btc_price = float(ticker['price']) if ticker else 0.0
+                        account_balance = usdt_balance + (btc_balance * btc_price)
+                    except:
+                        account_balance = usdt_balance + (btc_balance * current_price) if current_price > 0 else usdt_balance
+                else:
+                    account_balance = usdt_balance
+                
+                # Nếu không lấy được từ API, fallback về tính từ PnL
+                if account_balance <= 0:
+                    initial_balance = getattr(config, 'INITIAL_BALANCE', 10000)
+                    account_balance = initial_balance + total_pnl
+            except Exception as e:
+                # Fallback: Tính từ PnL nếu không lấy được từ API
+                initial_balance = getattr(config, 'INITIAL_BALANCE', 10000)
+                account_balance = initial_balance + total_pnl
+                
+                # Nếu có số dư trong DB thì ưu tiên dùng
+                cursor.execute('''
+                    SELECT account_balance FROM performance
+                    ORDER BY timestamp DESC LIMIT 1
+                ''')
+                latest_balance = cursor.fetchone()
+                if latest_balance and latest_balance[0]:
+                    account_balance = latest_balance[0]
             
-            latest_balance = cursor.fetchone()
-            account_balance = latest_balance[0] if latest_balance else 10000
+            # Lưu số dư vào database để theo dõi theo thời gian
+            try:
+                cursor.execute('''
+                    INSERT INTO performance (
+                        timestamp, total_trades, winning_trades, losing_trades,
+                        total_pnl, win_rate, avg_win, avg_loss, profit_factor, account_balance
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    datetime.now().isoformat(),
+                    total_trades,
+                    winning_trades,
+                    losing_trades,
+                    round(total_pnl, 2),
+                    round(win_rate, 2),
+                    round(avg_win, 2),
+                    round(avg_loss, 2),
+                    round(profit_factor, 2),
+                    round(account_balance, 2)
+                ))
+                conn.commit()
+            except Exception as e:
+                print(f"⚠️ Lỗi lưu performance: {e}")
             
             conn.close()
             

@@ -29,6 +29,7 @@ RSI_PERIOD = 14         # RSI
 ATR_PERIOD = 14         # ATR
 
 # Quản lý rủi ro
+INITIAL_BALANCE = float(os.getenv('INITIAL_BALANCE', '10000'))  # Số dư ban đầu (USDT)
 RISK_PERCENTAGE = 1.0   # Rủi ro 1% vốn mỗi lệnh
 STOP_LOSS_PERCENT = 2.0 # Stop loss 2%
 TAKE_PROFIT_PERCENT = 3.0 # Take profit 3%

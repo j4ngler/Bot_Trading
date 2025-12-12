@@ -32,7 +32,7 @@ class TradingBot:
     Bot giao dịch tự động chính
     """
     
-    def __init__(self):
+    def __init__(self, gui_log_callback=None):
         """Khởi tạo tất cả components"""
         print("🚀 Khởi tạo Trading Bot...")
         
@@ -49,6 +49,7 @@ class TradingBot:
         
         self.symbol = config.TRADE_SYMBOL
         self.running = False
+        self.gui_log_callback = gui_log_callback  # Callback để log vào GUI
         
         print("✅ Bot đã sẵn sàng!\n")
     
@@ -128,22 +129,37 @@ class TradingBot:
             
             if not can_execute:
                 print(f"⏸️ KHÔNG giao dịch: {reason}")
+                if self.gui_log_callback:
+                    self.gui_log_callback(f"⏸️ KHÔNG giao dịch: {reason}")
                 should_execute = False
             else:
                 print(f"✅ Điều kiện OK: {reason}")
+                if self.gui_log_callback:
+                    self.gui_log_callback(f"✅ Điều kiện OK: {reason}")
                 should_execute = True
             
             # Bước 5: Thực thi lệnh nếu đủ điều kiện
             if should_execute and advice['recommendation'] in ['BUY', 'SELL']:
                 print("\n5️⃣ Thực thi lệnh GIAO DỊCH THẬT...")
                 print("   ⚠️ Lưu ý: Đây là giao dịch thật trên Binance Testnet")
+                if self.gui_log_callback:
+                    self.gui_log_callback(f"🔄 Đang thực thi lệnh {advice['recommendation']}...")
                 self._execute_trade(advice['recommendation'], indicators, advice)
             else:
                 if not should_execute:
                     print(f"\n⏸️ Tạm thời GIỮ vị thế - Không giao dịch")
                     print(f"   Lý do: {reason if 'reason' in locals() else 'Điều kiện chưa đạt'}")
+                    if self.gui_log_callback:
+                        self.gui_log_callback(f"⏸️ Tạm thời GIỮ vị thế - Không giao dịch: {reason if 'reason' in locals() else 'Điều kiện chưa đạt'}")
                 elif advice['recommendation'] == 'HOLD':
                     print("\n⏸️ AI khuyến nghị HOLD - Không giao dịch")
+                    if self.gui_log_callback:
+                        self.gui_log_callback("⏸️ AI khuyến nghị HOLD - Không giao dịch")
+                        self.gui_log_callback(f"⏸️ Tạm thời GIỮ vị thế - Không giao dịch: {reason if 'reason' in locals() else 'Điều kiện chưa đạt'}")
+                elif advice['recommendation'] == 'HOLD':
+                    print("\n⏸️ AI khuyến nghị HOLD - Không giao dịch")
+                    if self.gui_log_callback:
+                        self.gui_log_callback("⏸️ AI khuyến nghị HOLD - Không giao dịch")
             
             # Lưu kết quả
             result = {
@@ -193,10 +209,22 @@ class TradingBot:
                 order = self.executor.place_market_buy(self.symbol, quantity)
                 if order:
                     self.database_logger.save_trading_record(order, position_info)
+                    # Log vào GUI nếu có callback
+                    if self.gui_log_callback:
+                        executed_qty = float(order.get('executedQty', 0))
+                        cummulative_quote = float(order.get('cummulativeQuoteQty', 0))
+                        avg_price = cummulative_quote / executed_qty if executed_qty > 0 else current_price
+                        self.gui_log_callback(f"✅ Lệnh MUA thành công! Order ID: {order.get('orderId')}, Số lượng: {executed_qty:.6f} BTC, Giá: ${avg_price:.2f}")
             elif recommendation == 'SELL':
                 order = self.executor.place_market_sell(self.symbol, quantity)
                 if order:
                     self.database_logger.save_trading_record(order, position_info)
+                    # Log vào GUI nếu có callback
+                    if self.gui_log_callback:
+                        executed_qty = float(order.get('executedQty', 0))
+                        cummulative_quote = float(order.get('cummulativeQuoteQty', 0))
+                        avg_price = cummulative_quote / executed_qty if executed_qty > 0 else current_price
+                        self.gui_log_callback(f"✅ Lệnh BÁN thành công! Order ID: {order.get('orderId')}, Số lượng: {executed_qty:.6f} BTC, Giá: ${avg_price:.2f}")
             
         except Exception as e:
             print(f"   ❌ Lỗi thực thi: {e}")
