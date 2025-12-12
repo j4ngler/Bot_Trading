@@ -175,7 +175,10 @@ class ReportingMonitoring:
         try:
             df = pd.DataFrame()
             if equity_points:
-                df = pd.DataFrame(equity_points, columns=['cycle', 'account_balance'])
+                if equity_points and len(equity_points[0]) >= 3:
+                    df = pd.DataFrame(equity_points, columns=['cycle', 'account_balance', 'signal'])
+                else:
+                    df = pd.DataFrame(equity_points, columns=['cycle', 'account_balance'])
             else:
                 conn = sqlite3.connect(self.db_file)
                 
@@ -281,6 +284,25 @@ class ReportingMonitoring:
                     linewidths=0.5,
                     zorder=3
                 )
+                # Marker BUY/SELL nếu có
+                if 'signal' in df.columns:
+                    buy_df = df[df['signal'].str.upper() == 'BUY'] if not df.empty else pd.DataFrame()
+                    sell_df = df[df['signal'].str.upper() == 'SELL'] if not df.empty else pd.DataFrame()
+                    if not buy_df.empty:
+                        ax1.scatter(buy_df['cycle'], buy_df['account_balance'],
+                                    marker='^', color='#00b894', s=70, edgecolor='black', linewidths=0.6, zorder=4, label='BUY')
+                        for _, row in buy_df.iterrows():
+                            ax1.annotate(f"{int(row['cycle'])}", (row['cycle'], row['account_balance']),
+                                         textcoords="offset points", xytext=(0, 6), ha='center', fontsize=8, color='#006442')
+                    if not sell_df.empty:
+                        ax1.scatter(sell_df['cycle'], sell_df['account_balance'],
+                                    marker='v', color='#e17055', s=70, edgecolor='black', linewidths=0.6, zorder=4, label='SELL')
+                        for _, row in sell_df.iterrows():
+                            ax1.annotate(f"{int(row['cycle'])}", (row['cycle'], row['account_balance']),
+                                         textcoords="offset points", xytext=(0, -10), ha='center', fontsize=8, color='#6c1a07')
+                    if not buy_df.empty or not sell_df.empty:
+                        ax1.legend(loc='upper left')
+
                 ax1.set_title('📈 Đường Cong Vốn Theo Chu Kỳ', fontsize=18, fontweight='bold')
                 ax1.set_xlabel('Chu kỳ chạy bot', fontsize=14)
                 ax1.set_ylabel('Số dư tài khoản (USDT)', fontsize=14)

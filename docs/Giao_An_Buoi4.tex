@@ -1,0 +1,262 @@
+% -*- coding: utf-8 -*-
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[vietnamese]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{enumitem}
+
+\geometry{margin=2.3cm}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Buổi 4 - Quản lý rủi ro \& Vị thế}
+\fancyhead[R]{Trading Bot - Testnet}
+\fancyfoot[C]{\thepage}
+
+\title{\textbf{Giáo Án Buổi 4}\\
+\large Quản Lý Rủi Ro \& Vị Thế: Công Thức Tính Khối Lượng, SL/TP, R/R}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section*{1. Mục tiêu buổi học}
+\begin{itemize}[leftmargin=1.2cm]
+    \item Hiểu và vận dụng quy tắc 1\% vốn: chỉ rủi ro tối đa 1\% số dư mỗi lệnh.
+    \item Nắm công thức tính khối lượng vị thế dựa trên stop loss và rủi ro chấp nhận được.
+    \item Hiểu cách đặt Stop Loss và Take Profit dựa trên ATR (linh hoạt) hoặc phần trăm cố định.
+    \item Tính được tỷ lệ Risk/Reward (R/R) và đánh giá xem lệnh có đáng thực hiện không (R/R $\geq$ 1.5).
+    \item Thực hành đọc code trong \texttt{risk\_manager.py} để hiểu cách bot tính toán vị thế.
+\end{itemize}
+
+\section*{2. Chuẩn bị}
+\begin{itemize}[leftmargin=1.2cm]
+    \item Máy đã cài đặt môi trường, có thể chạy GUI và xem log.
+    \item File \texttt{src/risk\_manager.py} và \texttt{src/config.py} đã mở sẵn trong editor.
+    \item Máy tính cầm tay hoặc công cụ tính toán để thực hành công thức.
+    \item Bảng ví dụ số liệu mẫu: Vốn = \$10,000, Giá BTC = \$43,250, ATR = \$250, Risk = 1\%.
+\end{itemize}
+
+\section*{3. Lộ trình 90 phút}
+
+\subsection*{A. Warm-up: ``Nếu bạn có \$10,000, bạn dám rủi ro bao nhiêu?'' (5')}
+\textbf{Hoạt động:} GV đặt câu hỏi mở:
+\begin{itemize}[leftmargin=0.5cm]
+    \item ``Nếu bạn có \$10,000 và muốn trade BTC, bạn sẽ mua bao nhiêu?''
+    \item ``Nếu giá BTC giảm 5\%, bạn sẽ mất bao nhiêu?''
+    \item ``Bạn có chấp nhận mất \$500 (5\%) trong một lệnh không?''
+\end{itemize}
+\textbf{Kết luận:} Hầu hết trader nghiệp dư không có quy tắc rõ ràng, dẫn đến rủi ro quá cao hoặc quá thấp. Bot sử dụng quy tắc 1\% để đảm bảo an toàn: chỉ rủi ro tối đa \$100 trên \$10,000 vốn mỗi lệnh.
+
+\subsection*{B. Quy tắc 1\% vốn (15')}
+
+\textbf{Bước 1: Giải thích quy tắc (5')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item \textbf{Quy tắc 1\%:} Chỉ rủi ro tối đa 1\% số dư tài khoản mỗi lệnh.
+    \item Ví dụ: Vốn = \$10,000 $\Rightarrow$ Rủi ro tối đa = \$10,000 $\times$ 1\% = \$100
+    \item \textbf{Tại sao 1\%?}
+    \begin{itemize}
+        \item Nếu mất 10 lệnh liên tiếp, bạn chỉ mất 10\% vốn (vẫn còn 90\% để tiếp tục)
+        \item Nếu rủi ro 5\% mỗi lệnh, chỉ cần 20 lệnh thua là mất hết vốn
+        \item Quy tắc này giúp trader sống sót qua các chuỗi lệnh thua
+    \end{itemize}
+\end{itemize}
+
+\textbf{Bước 2: Thực hành tính toán (10')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item \textbf{Bài tập 1:} Vốn = \$10,000, Risk = 1\%. Tính số tiền rủi ro tối đa?
+    \begin{itemize}
+        \item Đáp án: \$10,000 $\times$ 0.01 = \$100
+    \end{itemize}
+    \item \textbf{Bài tập 2:} Vốn = \$5,000, Risk = 1.5\%. Tính số tiền rủi ro?
+    \begin{itemize}
+        \item Đáp án: \$5,000 $\times$ 0.015 = \$75
+    \end{itemize}
+    \item \textbf{Bài tập 3:} Nếu bạn có \$20,000 và muốn rủi ro 2\% mỗi lệnh, bạn sẽ mất bao nhiêu nếu thua 5 lệnh liên tiếp?
+    \begin{itemize}
+        \item Đáp án: \$20,000 $\times$ 0.02 $\times$ 5 = \$2,000 (mất 10\% vốn)
+    \end{itemize}
+\end{itemize}
+
+\textit{Liên hệ kinh tế:} Quy tắc 1\% tương tự nguyên tắc ``đa dạng hóa rủi ro'' trong đầu tư: không bao giờ đặt tất cả trứng vào một giỏ. Trong trading, điều này có nghĩa là không bao giờ rủi ro quá nhiều trong một lệnh duy nhất.
+
+\subsection*{C. Công thức tính khối lượng vị thế (25')}
+
+\textbf{Bước 1: Giới thiệu công thức (10')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item \textbf{Công thức cơ bản:}
+    \[
+    \text{Khối lượng} = \frac{\text{Vốn} \times \text{Risk\%}}{\text{Giá Entry} \times \text{SL\%}}
+    \]
+    \item \textbf{Giải thích từng thành phần:}
+    \begin{itemize}
+        \item \textbf{Vốn $\times$ Risk\%:} Số tiền bạn sẵn sàng mất (ví dụ: \$10,000 $\times$ 1\% = \$100)
+        \item \textbf{Giá Entry $\times$ SL\%:} Khoảng cách stop loss tính bằng tiền (ví dụ: \$43,250 $\times$ 2\% = \$865)
+        \item \textbf{Khối lượng:} Số lượng coin/token bạn sẽ mua để nếu giá giảm SL\%, bạn chỉ mất đúng số tiền rủi ro đã định
+    \end{itemize}
+    \item \textbf{Ví dụ cụ thể:}
+    \begin{itemize}
+        \item Vốn: \$10,000
+        \item Risk: 1\% = \$100
+        \item Giá BTC: \$43,250
+        \item Stop Loss: 2\% = \$43,250 $\times$ 0.02 = \$865
+        \item Khối lượng = \$\frac{100}{865} \approx 0.1156$ BTC
+        \item Kiểm tra: Nếu giá giảm 2\% từ \$43,250 xuống \$42,393.5, bạn mất: 0.1156 $\times$ \$865 = \$100 ✓
+    \end{itemize}
+\end{itemize}
+
+\textbf{Bước 2: Đọc code trong risk\_manager.py (10')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item HS mở file \texttt{src/risk\_manager.py}, tìm hàm \texttt{calculate\_position\_size()}
+    \item GV hướng dẫn đọc từng dòng:
+    \begin{verbatim}
+    risk_amount = self.account_balance * (self.risk_percent / 100)
+    stop_loss_amount = entry_price * (self.stop_loss_percent / 100)
+    quantity = risk_amount / stop_loss_amount
+    \end{verbatim}
+    \item So sánh với công thức trên: code đang làm đúng theo công thức!
+    \item \textbf{Điểm đặc biệt:} Code còn xử lý trường hợp có ATR:
+    \begin{itemize}
+        \item Nếu có ATR, dùng \texttt{atr\_stop\_loss = current\_atr * 2} thay vì SL\% cố định
+        \item Điều này linh hoạt hơn vì ATR phản ánh biến động thực tế của thị trường
+    \end{itemize}
+\end{itemize}
+
+\textbf{Bước 3: Thực hành tính toán với số liệu thật (5')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Chạy bot, quan sát log khi bot tính vị thế
+    \item So sánh số liệu trong log với công thức:
+    \begin{itemize}
+        \item Log hiển thị: ``💰 Tính toán vị thế: Khối lượng: 0.1156, Rủi ro: \$100.00''
+        \item HS kiểm tra lại bằng công thức để xác nhận
+    \end{itemize}
+    \item \textbf{Bài tập:} Thay đổi \texttt{RISK\_PERCENTAGE} trong \texttt{config.py} từ 1.0 thành 2.0, chạy lại bot và quan sát khối lượng thay đổi như thế nào?
+\end{itemize}
+
+\subsection*{D. Stop Loss và Take Profit (20')}
+
+\textbf{Bước 1: Stop Loss dựa trên ATR (10')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item \textbf{Tại sao dùng ATR?}
+    \begin{itemize}
+        \item ATR đo biến động thực tế của thị trường
+        \item Khi ATR cao (thị trường biến động mạnh), cần đặt SL xa hơn để tránh bị ``stop out'' sớm
+        \item Khi ATR thấp (thị trường ổn định), có thể đặt SL gần hơn để bảo vệ vốn tốt hơn
+    \end{itemize}
+    \item \textbf{Công thức trong bot:}
+    \begin{itemize}
+        \item Stop Loss = Entry Price $\pm$ (2 $\times$ ATR) [Dấu + cho SELL, dấu - cho BUY]
+        \item Take Profit = Entry Price $\pm$ (3 $\times$ ATR)
+        \item Ví dụ: Entry = \$43,250, ATR = \$250
+        \begin{itemize}
+            \item SL (BUY) = \$43,250 - (2 $\times$ \$250) = \$42,750
+            \item TP (BUY) = \$43,250 + (3 $\times$ \$250) = \$44,000
+        \end{itemize}
+    \end{itemize}
+    \item \textbf{So sánh với SL\% cố định:}
+    \begin{itemize}
+        \item SL\% cố định: SL = \$43,250 $\times$ 0.98 = \$42,385 (cách entry 2\%)
+        \item SL dựa ATR: SL = \$42,750 (cách entry 1.16\%)
+        \item ATR linh hoạt hơn, phù hợp với điều kiện thị trường thực tế
+    \end{itemize}
+\end{itemize}
+
+\textbf{Bước 2: Take Profit và Risk/Reward Ratio (10')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item \textbf{Risk/Reward Ratio (R/R):}
+    \[
+    R/R = \frac{\text{Khoảng cách Take Profit}}{\text{Khoảng cách Stop Loss}}
+    \]
+    \item \textbf{Ví dụ:}
+    \begin{itemize}
+        \item Entry: \$43,250
+        \item SL: \$42,750 (risk = \$500)
+        \item TP: \$44,000 (reward = \$750)
+        \item R/R = \$\frac{750}{500} = 1.5
+    \end{itemize}
+    \item \textbf{Ý nghĩa R/R:}
+    \begin{itemize}
+        \item R/R = 1.5 nghĩa là: mỗi \$1 rủi ro, bạn kỳ vọng kiếm \$1.5 lợi nhuận
+        \item R/R $\geq$ 1.5 được coi là tốt (lợi nhuận tiềm năng lớn hơn rủi ro)
+        \item R/R < 1.0 nghĩa là rủi ro lớn hơn lợi nhuận $\Rightarrow$ không nên vào lệnh
+    \end{itemize}
+    \item \textbf{Đọc code:} Tìm hàm \texttt{calculate\_risk\_reward\_ratio()} trong \texttt{risk\_manager.py}
+\end{itemize}
+
+\subsection*{E. Thực hành tổng hợp (20')}
+
+\textbf{Bài tập lớn: Tính toán hoàn chỉnh một lệnh (15')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item \textbf{Đề bài:}
+    \begin{itemize}
+        \item Vốn: \$10,000
+        \item Risk: 1\%
+        \item Giá BTC hiện tại: \$43,250
+        \item ATR: \$250
+        \item Signal: BUY
+    \end{itemize}
+    \item \textbf{Yêu cầu:}
+    \begin{enumerate}
+        \item Tính số tiền rủi ro tối đa
+        \item Tính Stop Loss và Take Profit (dùng ATR)
+        \item Tính khối lượng vị thế
+        \item Tính Risk/Reward Ratio
+        \item Kết luận: Có nên vào lệnh không? (R/R $\geq$ 1.5?)
+    \end{enumerate}
+    \item \textbf{Đáp án gợi ý:}
+    \begin{itemize}
+        \item Rủi ro = \$10,000 $\times$ 1\% = \$100
+        \item SL = \$43,250 - (2 $\times$ \$250) = \$42,750
+        \item TP = \$43,250 + (3 $\times$ \$250) = \$44,000
+        \item Khối lượng = \$\frac{100}{500} = 0.2$ BTC
+        \item R/R = \$\frac{750}{500} = 1.5 ✓ (Đáng vào lệnh)
+    \end{itemize}
+\end{itemize}
+
+\textbf{So sánh với bot (5')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item Chạy bot với số liệu tương tự, quan sát log
+    \item So sánh kết quả tính toán của bot với kết quả tính tay
+    \item Thảo luận: Có khác biệt không? Vì sao?
+\end{itemize}
+
+\subsection*{F. Tổng kết và Q\&A (5')}
+\begin{itemize}[leftmargin=0.5cm]
+    \item GV tổng hợp:
+    \begin{itemize}
+        \item Quy tắc 1\% giúp bảo vệ vốn
+        \item Công thức tính khối lượng đảm bảo rủi ro không vượt quá ngưỡng
+        \item SL/TP dựa trên ATR linh hoạt hơn SL\% cố định
+        \item R/R $\geq$ 1.5 là tiêu chuẩn cho lệnh tốt
+    \end{itemize}
+    \item Q\&A: HS đặt câu hỏi về phần chưa hiểu
+\end{itemize}
+
+\section*{4. Bài tập về nhà}
+\begin{itemize}[leftmargin=1.2cm]
+    \item Tính toán hoàn chỉnh 2 lệnh mẫu khác (với số liệu khác nhau) và kiểm tra R/R.
+    \item Đọc kỹ hàm \texttt{calculate\_position\_size()} trong \texttt{risk\_manager.py}, viết comment giải thích từng bước tính toán.
+    \item (Tùy chọn) Thử thay đổi \texttt{STOP\_LOSS\_PERCENT} và \texttt{TAKE\_PROFIT\_PERCENT} trong \texttt{config.py}, quan sát sự thay đổi của R/R ratio.
+\end{itemize}
+
+\section*{5. Ghi chú cho giáo viên}
+\begin{itemize}[leftmargin=1.2cm]
+    \item Nhấn mạnh rằng quy tắc 1\% là ``kim chỉ nam'' trong quản lý rủi ro, không phải con số tuyệt đối.
+    \item Khuyến khích HS tính tay trước khi xem kết quả của bot để hiểu sâu hơn.
+    \item Nếu HS gặp khó khăn với công thức, có thể dùng ví dụ trực quan: ``Nếu bạn có 100 viên kẹo và chỉ muốn mất tối đa 1 viên mỗi lần chơi...''
+    \item Nhắc nhở: Luôn kiểm tra R/R trước khi vào lệnh, đây là thói quen tốt của trader chuyên nghiệp.
+\end{itemize}
+
+\vspace{0.5cm}
+\begin{center}
+\textbf{Kết thúc buổi 4:}\\
+\textit{Học sinh hiểu và có thể tính toán khối lượng vị thế, đặt SL/TP dựa trên ATR, và đánh giá lệnh qua R/R ratio.}
+\end{center}
+
+\end{document}

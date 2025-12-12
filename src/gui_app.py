@@ -28,6 +28,16 @@ class TradingBotGUI:
         self.equity_history = []
         self.chat_history = self._init_chat_history()
         self.auto_scroll_var = tk.BooleanVar(value=True)
+        self.auto_refresh_var = tk.BooleanVar(value=False)
+        self.auto_refresh_interval_var = tk.StringVar(value="5")  # phút
+        self.cycle_window_var = tk.StringVar(value="All")
+        self.log_filter_var = tk.StringVar(value="All")
+        self.log_records = []
+        self.api_status = {
+            "binance": tk.StringVar(value="⏳ Kiểm tra Binance..."),
+            "openai": tk.StringVar(value="⏳ Kiểm tra OpenAI...")
+        }
+        self._auto_refresh_job = None
         
         self.setup_gui()
     
@@ -46,6 +56,19 @@ class TradingBotGUI:
                               font=('Arial', 16, 'bold'),
                               bg='#2d2d2d', fg='#00ff00')
         title_label.pack(pady=15)
+
+        status_frame = tk.Frame(header_frame, bg='#2d2d2d')
+        status_frame.pack(side=tk.RIGHT, padx=10)
+        self.binance_status_label = tk.Label(
+            status_frame, textvariable=self.api_status["binance"],
+            bg='#2d2d2d', fg='#aaaaaa', font=('Arial', 9, 'bold')
+        )
+        self.binance_status_label.pack(side=tk.RIGHT, padx=(5, 0))
+        self.openai_status_label = tk.Label(
+            status_frame, textvariable=self.api_status["openai"],
+            bg='#2d2d2d', fg='#aaaaaa', font=('Arial', 9, 'bold')
+        )
+        self.openai_status_label.pack(side=tk.RIGHT, padx=(5, 0))
         
         # Main Container
         main_container = tk.Frame(self.root, bg='#1e1e1e')
@@ -137,6 +160,8 @@ class TradingBotGUI:
                                           bg='#2d2d2d', fg='#aaaaaa')
         self.last_update_label.pack()
     
+        # Khởi tạo trạng thái API ban đầu
+        self._update_api_status()
     def setup_right_panel(self, parent):
         """Thiết lập panel phải - Logs và Báo cáo (dùng Notebook/Tabs)"""
         
@@ -207,6 +232,12 @@ class TradingBotGUI:
             font=('Arial', 9)
         )
         auto_scroll_check.pack(side=tk.LEFT, padx=15)
+
+        tk.Label(controls_frame, text="Lọc", bg='#2d2d2d', fg='white', font=('Arial', 9)).pack(side=tk.LEFT, padx=(10, 3))
+        filter_options = ["All", "Info", "Warning", "Error", "Success"]
+        filter_menu = ttk.Combobox(controls_frame, values=filter_options, textvariable=self.log_filter_var, width=8, state="readonly")
+        filter_menu.pack(side=tk.LEFT)
+        filter_menu.bind("<<ComboboxSelected>>", lambda _ : self._refresh_log_display())
         
         # Text area for logs
         self.log_text = scrolledtext.ScrolledText(log_frame, 
@@ -243,6 +274,31 @@ class TradingBotGUI:
                                command=self.refresh_report,
                                bg='#2196F3', fg='white', font=('Arial', 10, 'bold'))
         refresh_btn.pack(side=tk.LEFT, padx=5)
+
+        # Chọn số chu kỳ hiển thị
+        tk.Label(refresh_frame, text="Hiển thị", bg='#2d2d2d', fg='white').pack(side=tk.LEFT, padx=(10, 3))
+        cycle_options = ["All", "30", "50", "100"]
+        cycle_menu = ttk.Combobox(refresh_frame, values=cycle_options, textvariable=self.cycle_window_var, width=5, state="readonly")
+        cycle_menu.pack(side=tk.LEFT)
+        cycle_menu.bind("<<ComboboxSelected>>", lambda _ : self.update_chart())
+
+        # Auto refresh
+        auto_refresh_check = tk.Checkbutton(
+            refresh_frame,
+            text="Auto refresh",
+            variable=self.auto_refresh_var,
+            onvalue=True,
+            offvalue=False,
+            bg='#2d2d2d',
+            fg='white',
+            selectcolor='#2d2d2d',
+            activebackground='#2d2d2d',
+            command=self._toggle_auto_refresh
+        )
+        auto_refresh_check.pack(side=tk.LEFT, padx=(15, 5))
+        tk.Label(refresh_frame, text="(phút)", bg='#2d2d2d', fg='white').pack(side=tk.LEFT, padx=(3, 2))
+        interval_entry = tk.Entry(refresh_frame, textvariable=self.auto_refresh_interval_var, width=4)
+        interval_entry.pack(side=tk.LEFT)
         
         # Khu vực tóm tắt
         self.report_frame = tk.Frame(report_container, bg='#1e1e1e')
@@ -261,6 +317,8 @@ class TradingBotGUI:
         chart_frame.config(height=500)
         
         self.chart_frame = chart_frame
+        self.chart_update_label = tk.Label(report_container, text="", bg='#2d2d2d', fg='#aaaaaa', font=('Arial', 9, 'italic'))
+        self.chart_update_label.pack(fill=tk.X, padx=10, pady=(0, 5))
         
         # Load báo cáo ban đầu
         self.refresh_report()
@@ -269,14 +327,42 @@ class TradingBotGUI:
         """Thêm log vào text area"""
         timestamp = datetime.now().strftime('%H:%M:%S')
         tag = self._resolve_log_tag(message)
-        self.log_text.insert(tk.END, f"[{timestamp}] ", ('time',))
-        self.log_text.insert(tk.END, f"{message}\n", (tag,))
-        if self.auto_scroll_var.get():
-            self.log_text.see(tk.END)
+        self.log_records.append((timestamp, message, tag))
+        self._refresh_log_display()
 
     def clear_logs(self):
         """Xóa toàn bộ log khỏi khung hiển thị"""
         self.log_text.delete('1.0', tk.END)
+        self.log_records.clear()
+
+    def _toggle_auto_refresh(self):
+        if self.auto_refresh_var.get():
+            self._start_auto_refresh()
+        else:
+            self._cancel_auto_refresh()
+
+    def _start_auto_refresh(self):
+        self._cancel_auto_refresh()
+        try:
+            minutes = float(self.auto_refresh_interval_var.get())
+            delay_ms = max(10, int(minutes * 60 * 1000))
+        except ValueError:
+            delay_ms = 5 * 60 * 1000  # mặc định 5 phút nếu nhập sai
+
+        def job():
+            if self.running and self.auto_refresh_var.get():
+                self.refresh_report()
+                self._auto_refresh_job = self.root.after(delay_ms, job)
+
+        self._auto_refresh_job = self.root.after(delay_ms, job)
+
+    def _cancel_auto_refresh(self):
+        if self._auto_refresh_job:
+            try:
+                self.root.after_cancel(self._auto_refresh_job)
+            except Exception:
+                pass
+            self._auto_refresh_job = None
 
     def _resolve_log_tag(self, message):
         """Xác định màu log dựa trên nội dung"""
@@ -288,6 +374,27 @@ class TradingBotGUI:
         if any(key in text for key in ['✅', 'THÀNH CÔNG', 'SUCCESS', 'ĐÃ LƯU']):
             return 'success'
         return 'info'
+
+    def _refresh_log_display(self):
+        """Hiển thị log theo bộ lọc hiện tại"""
+        self.log_text.config(state='normal')
+        self.log_text.delete('1.0', tk.END)
+        current_filter = self.log_filter_var.get()
+        for ts, msg, tag in self.log_records:
+            if current_filter != "All":
+                if current_filter == "Info" and tag != 'info':
+                    continue
+                if current_filter == "Warning" and tag != 'warning':
+                    continue
+                if current_filter == "Error" and tag != 'error':
+                    continue
+                if current_filter == "Success" and tag != 'success':
+                    continue
+            self.log_text.insert(tk.END, f"[{ts}] ", ('time',))
+            self.log_text.insert(tk.END, f"{msg}\n", (tag,))
+        if self.auto_scroll_var.get():
+            self.log_text.see(tk.END)
+        self.log_text.config(state='disabled')
     
     def start_bot(self):
         """Bắt đầu bot - THỰC HIỆN GIAO DỊCH THẬT"""
@@ -319,9 +426,11 @@ class TradingBotGUI:
         self.log("\n▶️ Bot bắt đầu chạy - CHẾ ĐỘ GIAO DỊCH THẬT")
         self.log("⚠️ Bot sẽ thực hiện lệnh BUY/SELL khi đủ điều kiện")
         self.status_label.config(text="🟢 ĐANG CHẠY (GIAO DỊCH THẬT)", fg='#4CAF50')
+        self._update_api_status()
         
         # Lấy interval từ config
         self.bot.trading_interval = config.TRADING_INTERVAL_MINUTES
+        self._start_auto_refresh()
         
         # Chạy bot trong thread riêng
         thread = threading.Thread(target=self.run_bot_continuous, daemon=True)
@@ -333,6 +442,7 @@ class TradingBotGUI:
         self.start_btn.config(state='normal')
         self.stop_btn.config(state='disabled')
         self.demo_btn.config(state='normal')
+        self._cancel_auto_refresh()
         
         self.log("⏸️ Bot đã dừng")
         self.status_label.config(text="🔴 ĐÃ DỪNG", fg='#f44336')
@@ -380,7 +490,8 @@ class TradingBotGUI:
                         summary = self.bot.reporting.generate_summary_report()
                         if summary:
                             balance = summary.get('account_balance', 0)
-                            self.equity_history.append((self.cycle_count, balance))
+                            rec = result.get('recommendation', '')
+                            self.equity_history.append((self.cycle_count, balance, rec))
                         self.bot.reporting.plot_equity_curve(equity_points=self.equity_history)
                         self.bot.reporting.export_html_report()
                         self.log(f"📄 Đã cập nhật báo cáo: {config.REPORT_HTML_FILE}, {config.EQUITY_CURVE_FILE}")
@@ -563,8 +674,21 @@ class TradingBotGUI:
             
             chart_file = config.EQUITY_CURVE_FILE
             try:
-                if not os.path.exists(chart_file) or not self.equity_history:
-                    self.bot.reporting.plot_equity_curve(equity_points=self.equity_history)
+                cycles_to_show = self.cycle_window_var.get()
+                if cycles_to_show != "All":
+                    try:
+                        max_points = int(cycles_to_show)
+                    except ValueError:
+                        max_points = None
+                else:
+                    max_points = None
+
+                history = self.equity_history
+                if max_points and len(history) > max_points:
+                    history = history[-max_points:]
+
+                if not os.path.exists(chart_file) or not history:
+                    self.bot.reporting.plot_equity_curve(equity_points=history)
                 if os.path.exists(chart_file):
                     self._render_chart_image(chart_file)
                 else:
@@ -585,6 +709,7 @@ class TradingBotGUI:
                     font=('Arial', 12)
                 )
                 no_data_label.pack(pady=20)
+            self.chart_update_label.config(text=f"Cập nhật: {datetime.now().strftime('%H:%M:%S')}")
         except ImportError:
             # Nếu không có PIL, hiển thị thông báo
             no_pil_label = tk.Label(self.chart_frame,
@@ -656,6 +781,24 @@ class TradingBotGUI:
         self.chat_display.insert(tk.END, f"{prefix}: {message}\n")
         self.chat_display.see(tk.END)
         self.chat_display.config(state='disabled')
+
+    def _update_api_status(self):
+        """Cập nhật badge trạng thái kết nối API"""
+        # Kiểm tra Binance
+        binance_ok = hasattr(self.bot, 'executor') and self.bot.executor is not None
+        binance_text = "Binance: OK" if binance_ok else "Binance: Lỗi"
+        binance_color = '#00ff00' if binance_ok else '#ff5555'
+        self.api_status["binance"].set(binance_text)
+        if hasattr(self, 'binance_status_label'):
+            self.binance_status_label.config(fg=binance_color)
+
+        # Kiểm tra OpenAI
+        openai_ok = hasattr(self.bot, 'advisor') and self.bot.advisor is not None and getattr(self.bot.advisor, 'model', None)
+        openai_text = "OpenAI: OK" if openai_ok else "OpenAI: Lỗi"
+        openai_color = '#00ff00' if openai_ok else '#ff5555'
+        self.api_status["openai"].set(openai_text)
+        if hasattr(self, 'openai_status_label'):
+            self.openai_status_label.config(fg=openai_color)
 
     def send_chat_message(self):
         """Gửi câu hỏi tới ChatGPT"""
