@@ -17,7 +17,7 @@ BINANCE_SECRET_KEY = os.getenv('BINANCE_SECRET_KEY', 'MyomWeTwb573WnIAr7nBQ7yq6v
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 
 # Model: dùng gpt-4o-mini để tiết kiệm, hoặc gpt-4o
-OPENAI_MODEL = 'gpt-3'  # 'gpt-4o-mini' or 'gpt-4o'
+OPENAI_MODEL = 'gpt-4o-mini'  # 'gpt-4o-mini' or 'gpt-4o'
 
 # ============ TRADING CONFIGURATION ============
 # Symbol để trade
