@@ -27,6 +27,12 @@ TRADE_SYMBOL = 'BTCUSDT'
 MA_PERIOD = 15          # Moving Average
 RSI_PERIOD = 14         # RSI
 ATR_PERIOD = 14         # ATR
+# MACD settings
+MACD_FAST = int(os.getenv('MACD_FAST', '12'))
+MACD_SLOW = int(os.getenv('MACD_SLOW', '26'))
+MACD_SIGNAL = int(os.getenv('MACD_SIGNAL', '9'))
+# Fibonacci lookback window (periods)
+FIB_LOOKBACK = int(os.getenv('FIB_LOOKBACK', '100'))
 
 # Quản lý rủi ro
 INITIAL_BALANCE = float(os.getenv('INITIAL_BALANCE', '10000'))  # Số dư ban đầu (USDT)

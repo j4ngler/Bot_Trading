@@ -81,6 +81,58 @@ class TechnicalIndicators:
         """
         atr = ta.atr(high=df['high'], low=df['low'], close=df['close'], length=period)
         return atr
+
+    @staticmethod
+    def macd(df_close, fast=12, slow=26, signal=9):
+        """
+        Calculate MACD (Moving Average Convergence Divergence).
+
+        Args:
+            df_close: Series of close prices or DataFrame with 'close'
+            fast: fast EMA period
+            slow: slow EMA period
+            signal: signal line EMA period
+
+        Returns:
+            DataFrame with columns ['macd', 'signal', 'hist']
+        """
+        if hasattr(df_close, 'columns'):
+            close = df_close['close']
+        else:
+            close = df_close
+
+        ema_fast = close.ewm(span=fast, adjust=False).mean()
+        ema_slow = close.ewm(span=slow, adjust=False).mean()
+        macd_line = ema_fast - ema_slow
+        signal_line = macd_line.ewm(span=signal, adjust=False).mean()
+        hist = macd_line - signal_line
+
+        return pd.DataFrame({'macd': macd_line, 'signal': signal_line, 'hist': hist})
+
+    @staticmethod
+    def fibonacci_retracement(df, lookback=100):
+        """
+        Compute Fibonacci retracement levels from the highest high and lowest low in a lookback window.
+
+        Args:
+            df: DataFrame with columns 'high' and 'low'
+            lookback: number of periods to look back
+
+        Returns:
+            dict: {'high': float, 'low': float, 'levels': {ratio: price, ...}}
+        """
+        if len(df) < 2:
+            return {'high': None, 'low': None, 'levels': {}}
+
+        window = df[-lookback:]
+        swing_high = window['high'].max()
+        swing_low = window['low'].min()
+
+        levels_ratios = [0.0, 0.236, 0.382, 0.5, 0.618, 1.0]
+        diff = swing_high - swing_low
+        levels = {r: swing_low + diff * r for r in levels_ratios}
+
+        return {'high': swing_high, 'low': swing_low, 'levels': levels}
     
     @staticmethod
     def get_all_indicators(df, ma_period=10, rsi_period=14, atr_period=14):

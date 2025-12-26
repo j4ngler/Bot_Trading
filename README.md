@@ -115,6 +115,20 @@ python run.py
 ```
 
 - Lệnh trên tự động mở giao diện TradingBotGUI với đầy đủ tab Logs/Báo cáo/Chat.
+
+### Example: compute MACD + Fibonacci signals
+
+You can compute MACD and Fibonacci-based signals locally using the helper module `src/strategy_signals.py`.
+
+Example (from repository root):
+
+```bash
+python -c "from src.strategy_signals import generate_signals; import pandas as pd; df = pd.read_csv('data/sample_prices.csv'); print(generate_signals(df))"
+```
+
+This will print a conservative recommendation (BUY/SELL/HOLD) plus entry/stop suggestions derived from MACD crosses and Fibonacci retracement levels.
+
+- Use this helper for quick local testing and visualization before wiring signals into `src/main.py` or `src/chatgpt_advisor.py`.
 - Trong trường hợp môi trường không hỗ trợ GUI, chương trình tự chuyển sang chế độ CLI liên tục (thông báo ngay trong terminal).
 
 ### Chế Độ GUI (main.py - Mặc định)
